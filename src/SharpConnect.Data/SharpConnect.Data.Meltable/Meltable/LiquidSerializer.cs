@@ -1,6 +1,8 @@
 ﻿//MIT 2015- 2016, brezza92, EngineKit and contributors
 using System;
 using System.IO;
+using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 
 namespace SharpConnect.Data.Meltable
@@ -178,7 +180,48 @@ namespace SharpConnect.Data.Meltable
             writer.Write(buffer);
             //--------------------------------------------------
         }
+        void WriteCompactInteger(int value)
+        {
+            switch (value)
+            {
+                case -1: writer.Write((byte)MarkerCode.NumM1); break;
+                case 0: writer.Write((byte)MarkerCode.Num0); break;
+                case 1: writer.Write((byte)MarkerCode.Num0); break;
+                case 2: writer.Write((byte)MarkerCode.Num0); break;
+                case 3: writer.Write((byte)MarkerCode.Num0); break;
+                case 4: writer.Write((byte)MarkerCode.Num0); break;
+                case 5: writer.Write((byte)MarkerCode.Num0); break;
+                case 6: writer.Write((byte)MarkerCode.Num0); break;
+                case 7: writer.Write((byte)MarkerCode.Num0); break;
+                case 8: writer.Write((byte)MarkerCode.Num0); break;
+                case 9: writer.Write((byte)MarkerCode.Num0); break;
+                case 10: writer.Write((byte)MarkerCode.Num0); break;
+                default:
+                    {
+                        if (value > 0)
+                        {
+                            if (value < 256)
+                            {
+                                WriteByte((byte)value);
+                            }
+                            else if (value < ushort.MaxValue)
+                            {
+                                WriteUInt16((ushort)value);
+                            }
+                            else
+                            {
+                                writer.Write(value);
+                            }
+                        }
+                        else
+                        {
+                            writer.Write(value);
+                        }
+                    }
+                    break;
+            }
 
+        }
         void WriteByte(byte b)
         {
             writer.Write((byte)MarkerCode.Byte);
@@ -376,12 +419,35 @@ namespace SharpConnect.Data.Meltable
                 }
                 WriteEndArray();
             }
-            else
+            else if (o is IDictionary)
             {
                 //native dic
+                IDictionary dic = (IDictionary)o;
+
+                WriteStartObject();
+                foreach (DictionaryEntry kp in dic)
+                {
+                    var key = kp.Key;
+                    //this version
+                    //check if key is support 
+                    if (key is int)
+                    {
+                        WriteCompactInteger((int)key);
+                    }
+                    else
+                    {
+                        //else translate to string
+                        WriteString(key.ToString());
+                    }
+                    WriteObject(kp.Value);
+                }
+                WriteEndObject();
+            }
+            else
+            {
+                throw new NotSupportedException();
 
             }
-
         }
 
     }
