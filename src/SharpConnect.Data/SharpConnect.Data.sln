@@ -5,6 +5,10 @@ VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpConnect.Data", "SharpConnect.Data.csproj", "{9AFB3F52-D37D-4FBA-AC0D-76D95AE956B0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test01", "..\Test01\Test01.csproj", "{A34AE026-1812-4244-A6E1-5EA41557BF30}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpConnect.Data.Meltable", "SharpConnect.Data.Meltable\SharpConnect.Data.Meltable.csproj", "{E52375F0-9DCB-42D9-A555-5C47C1AF4E3B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{9AFB3F52-D37D-4FBA-AC0D-76D95AE956B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9AFB3F52-D37D-4FBA-AC0D-76D95AE956B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9AFB3F52-D37D-4FBA-AC0D-76D95AE956B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A34AE026-1812-4244-A6E1-5EA41557BF30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A34AE026-1812-4244-A6E1-5EA41557BF30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A34AE026-1812-4244-A6E1-5EA41557BF30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A34AE026-1812-4244-A6E1-5EA41557BF30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E52375F0-9DCB-42D9-A555-5C47C1AF4E3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E52375F0-9DCB-42D9-A555-5C47C1AF4E3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E52375F0-9DCB-42D9-A555-5C47C1AF4E3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E52375F0-9DCB-42D9-A555-5C47C1AF4E3B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
