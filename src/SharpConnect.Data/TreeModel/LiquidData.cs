@@ -41,6 +41,10 @@ namespace SharpConnect.Data
         {
             return new LqElement(elementName, this);
         }
+        public LiquidArray CreateArray()
+        {
+            return new LqArray();
+        }
         public int GetStringIndex(string str)
         {
             int found;
