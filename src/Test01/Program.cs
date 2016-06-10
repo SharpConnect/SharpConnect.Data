@@ -25,7 +25,7 @@ namespace Test01
             //test native arrat object
             elem.AppendAttribute("memberlist1", new string[] { "x", "y", "z" });
             elem.AppendAttribute("memberlist2", new object[] { 1, "y", "z" });
-             
+            
 
             byte[] output = null;
             using (var ms = new MemoryStream())

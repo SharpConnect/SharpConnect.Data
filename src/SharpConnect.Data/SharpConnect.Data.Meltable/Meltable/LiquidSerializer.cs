@@ -296,6 +296,8 @@ namespace SharpConnect.Data.Meltable
                 WriteArray(arr);
                 return;
             }
+
+
             //----------------------------
             Type otype = o.GetType();
             TypeCode tcode = Type.GetTypeCode(otype);
@@ -314,7 +316,7 @@ namespace SharpConnect.Data.Meltable
                     WriteDateTime((DateTime)o);
                     return;
                 case TypeCode.DBNull:
-                    throw new NotSupportedException(); 
+                    throw new NotSupportedException();
                 case TypeCode.Decimal:
                     WriteDecimal((decimal)o);
                     return;
@@ -359,10 +361,28 @@ namespace SharpConnect.Data.Meltable
                     throw new NotSupportedException();
             }
             //----------------------------
+            //other object
+            //1. wellknown object
 
+            if (o is Array)
+            {
+                var nativeArray = (Array)o;
+                //get element type
+                int len = nativeArray.Length;
+                WriteStartArray();
+                foreach (var e in nativeArray)
+                {
+                    WriteObject(e);
+                }
+                WriteEndArray();
+            }
+            else
+            {
+                //native dic
 
-            throw new NotSupportedException();
+            }
+
         }
-         
+
     }
 }

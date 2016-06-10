@@ -91,17 +91,13 @@ namespace SharpConnect.Data.Meltable
         protected virtual void OnDecimal(decimal value)
         {
         }
-        protected virtual void OnKey()
-        {
-        }
-        protected virtual void OnKeyValue()
-        {
-        }
+        
+       
         bool ReadObjectKey()
         {
             //---------------------
             //then read key and value
-            OnKey();
+          
             MarkerCode marker = (MarkerCode)reader.ReadByte();
             switch (marker)
             {
@@ -197,9 +193,7 @@ namespace SharpConnect.Data.Meltable
                     break;
                 default:
                     throw new NotSupportedException();
-            }
-
-            OnKeyValue();
+            } 
             return true;
         }
         void ReadObject(int sizeHintInByteCount)
@@ -228,10 +222,7 @@ namespace SharpConnect.Data.Meltable
                 {
                     break;
                 }
-                else
-                {
-                    //push read value to array
-                }
+                 
             }
             OnEndArray();
         }
