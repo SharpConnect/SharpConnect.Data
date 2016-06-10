@@ -24,6 +24,10 @@ namespace SharpConnect.Data.Meltable
         {
 
         }
+        protected virtual void OnBeginTypedArray(MarkerCode typeOfElement, int elemCount)
+        {
+
+        }
         protected virtual void OnEndArray()
         {
 
@@ -91,13 +95,10 @@ namespace SharpConnect.Data.Meltable
         protected virtual void OnDecimal(decimal value)
         {
         }
-        
-       
         bool ReadObjectKey()
         {
             //---------------------
-            //then read key and value
-          
+            //then read key and value 
             MarkerCode marker = (MarkerCode)reader.ReadByte();
             switch (marker)
             {
@@ -193,7 +194,7 @@ namespace SharpConnect.Data.Meltable
                     break;
                 default:
                     throw new NotSupportedException();
-            } 
+            }
             return true;
         }
         void ReadObject(int sizeHintInByteCount)
@@ -205,7 +206,6 @@ namespace SharpConnect.Data.Meltable
             while (ReadObjectKey())
             {
                 MarkerCode marker;
-
                 ReadValue(out marker);
             }
             OnEndObject();
@@ -213,7 +213,6 @@ namespace SharpConnect.Data.Meltable
         void ReadArray(int sizeHintInByteCount)
         {
             OnBeginArray();
-
             for (;;)
             {
                 MarkerCode marker;
@@ -222,12 +221,114 @@ namespace SharpConnect.Data.Meltable
                 {
                     break;
                 }
-                 
+
             }
             OnEndArray();
         }
+        void ReadTypedArray(int sizeHintInByteCount)
+        {
+            //read type (   
+            //1. element type
+            int encodedTypeAndElementLengthCode = reader.ReadByte();
+            //lower 5 bits is primitive type
+            MarkerCode elementType = (MarkerCode)(0x1f & encodedTypeAndElementLengthCode);
+            //update 2 bits is encoded element length space*
+            int arrLen = 0;
+            switch (encodedTypeAndElementLengthCode >> 5)
+            {
+                case 0:
+                    {
+                        //blank Arr
 
+                    }
+                    break;
+                case 1:
+                    {
+                        //array element count is in next 1 byte
+                        arrLen = reader.ReadByte();
+                    }
+                    break;
+                case 2:
+                    {
+                        //array element count is in next 2 bytes, unsigned
+                        arrLen = reader.ReadUInt16();
+                    }
+                    break;
+                case 3:
+                    {
+                        //array element count is in next 4 bytes, signed
+                        arrLen = reader.ReadInt32();
+                    }
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
 
+            //2. read element count
+            OnBeginTypedArray(elementType, arrLen);
+            //loop 
+            switch (elementType)
+            {
+                //only element type that support typed array
+                case MarkerCode.Byte:
+                    for (int i = 0; i < arrLen; ++i) { OnByte(reader.ReadByte()); }
+                    break;
+                case MarkerCode.SByte:
+                    for (int i = 0; i < arrLen; ++i) { OnSByte(reader.ReadSByte()); }
+                    break;
+                case MarkerCode.True:
+                case MarkerCode.False:
+                    for (int i = 0; i < arrLen; ++i) { OnBoolean(reader.ReadBoolean()); }
+                    break;
+                case MarkerCode.Int16:
+                    for (int i = 0; i < arrLen; ++i) { OnInt16(reader.ReadInt16()); }
+                    break;
+                case MarkerCode.UInt16:
+                    for (int i = 0; i < arrLen; ++i) { OnUInt16(reader.ReadUInt16()); }
+                    break;
+                case MarkerCode.Char:
+                    for (int i = 0; i < arrLen; ++i) { OnChar(reader.ReadChar()); }
+                    break;
+                case MarkerCode.Int32:
+                    for (int i = 0; i < arrLen; ++i) { OnInt32(reader.ReadInt32()); }
+                    break;
+                case MarkerCode.UInt32:
+                    for (int i = 0; i < arrLen; ++i) { OnUInt32(reader.ReadUInt32()); }
+                    break;
+                case MarkerCode.Int64:
+                    for (int i = 0; i < arrLen; ++i) { OnInt64(reader.ReadInt64()); }
+                    break;
+                case MarkerCode.UInt64:
+                    for (int i = 0; i < arrLen; ++i) { OnUInt64(reader.ReadUInt64()); }
+                    break;
+                case MarkerCode.Float32:
+                    for (int i = 0; i < arrLen; ++i) { OnFloat32(reader.ReadSingle()); }
+                    break;
+                case MarkerCode.Float64:
+                    for (int i = 0; i < arrLen; ++i) { OnFloat64(reader.ReadDouble()); }
+                    break;
+                case MarkerCode.DateTime:
+                    for (int i = 0; i < arrLen; ++i) { var dtm = DateTime.FromBinary(reader.ReadInt64()); OnDateTime(dtm); }
+                    break;
+                case MarkerCode.Decimal:
+                    for (int i = 0; i < arrLen; ++i) { OnDecimal(reader.ReadDecimal()); }
+                    break;
+                case MarkerCode.GUID:
+                    for (int i = 0; i < arrLen; ++i) { OnGuidData(reader.ReadBytes(16)); }
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+
+            //should stop with  end-arra
+            var endArr = (MarkerCode)reader.ReadByte();
+            if (endArr != MarkerCode.EndArray)
+            {
+                throw new Exception("arrerr!");
+            }
+
+            OnEndArray();
+        }
         protected void ReadValue(out MarkerCode marker)
         {
             //all object
@@ -248,7 +349,8 @@ namespace SharpConnect.Data.Meltable
                 case MarkerCode.StartObject_4:
                     ReadObject(reader.ReadInt32());
                     break;
-                case MarkerCode.ObjectFieldSep:
+                case MarkerCode.Sep:
+                    //
                     throw new NotSupportedException();
                 case MarkerCode.EndObject:
                     break;
@@ -265,11 +367,18 @@ namespace SharpConnect.Data.Meltable
                 case MarkerCode.StartArray_4:
                     ReadArray(reader.ReadInt32());
                     break;
-                case MarkerCode.ArrayElementSep:
-                    throw new NotSupportedException();
-                case MarkerCode.ArrayElementType:
-                case MarkerCode.ArrayElementTypeCustom:
-                    throw new Exception("should not be found here!");
+                case MarkerCode.StartArray_T:
+                    ReadTypedArray(0);
+                    break;
+                case MarkerCode.StartArray_T_1:
+                    ReadTypedArray(reader.ReadByte());
+                    break;
+                case MarkerCode.StartArray_T_2:
+                    ReadTypedArray(reader.ReadUInt16());
+                    break;
+                case MarkerCode.StartArray_T_4:
+                    ReadTypedArray(reader.ReadInt32());
+                    break;
                 case MarkerCode.EndArray:
                     //end arr
                     break;
@@ -280,10 +389,7 @@ namespace SharpConnect.Data.Meltable
                 case MarkerCode.NullString:
                     OnNullString();
                     break;
-                case MarkerCode.MbCount1:
-                case MarkerCode.MbCount2:
-                case MarkerCode.MbCount4:
-                    throw new Exception("should not be found here!");
+
                 //--------------------------
                 case MarkerCode.True:
                     OnBoolean(true);

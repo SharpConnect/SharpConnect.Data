@@ -7,67 +7,71 @@ namespace SharpConnect.Data.Meltable
     public enum MarkerCode : byte
     {
         Unknown = 0,
+        //---------------------
+        //primitive value type
+        //value 1-32: 
+        //this value can be encode with strong typed array***
+        //---------------------
+        Byte = 1,  //1
+        SByte = 2,  //1
 
-        StartObject = 15, //{ no hint       
-        StartObject_1 = 16, //followed byte_count of this object,fit in 1 byte
-        StartObject_2 = 17,//followed byte_count  of this object,fit in 2 bytes
-        StartObject_4 = 18,//followed byte_count  of this object,fit in 2 bytes
-        ObjectFieldSep = 19, //optional,field separator, for marking ,
+        True = 3, //boolean
+        False = 4, //boolean 
 
-        EndObject = 20, //}
+        Int16 = 5, //2
+        UInt16 = 6,//2
+        Char = 7,
 
-        StartArray = 21, //[ no hint
-        StartArray_1 = 22,// followed byte_count of this array,fit in 1 byte
-        StartArray_2 = 23,// followed byte_count of this array,fit in 1 byte
-        StartArray_4 = 24,// followed byte_count of this array,fit in 1 byte
-        ArrayElementSep = 25, //optional,
+        Int32 = 8, //4
+        UInt32 = 9, //4
 
-        ArrayElementType = 26, //followed by 1 byte of native data type, eg. (boolean, number, datetime, string etc, except array type or object type)
-        ArrayElementTypeCustom = 27, //followed by 2 byte of external user define type 
+        Int64 = 10, //8
+        UInt64 = 11,//8
 
-        EndArray = 28, //]
+        Float32 = 12, //float , 4
+        Float64 = 13, //double, 8
 
-        //used with object or array, just for hint, optional
-        MbCount1 = 29,//member count fit in 1 bytes
-        MbCount2 = 30,//member count fit in 2 bytes
-        MbCount4 = 31,//member count fit in 4 bytes
+        DateTime = 14, //8 bytes 
+        Decimal = 15, //extened, 16 bytes (128 bits) 
+        GUID = 16, // 16 bytes 
+        //-------------------------------------------
+        CustomType = 17, //2 bytes code to external object
+        //-------------------------------------------
+        //18-31 is reserved
 
-        Null = 32, //null object, array, string
-        NullString = 33,
-         
+        //-------------------------------------------
+        //32-49: object and array description
 
-        True = 36, //boolean
-        False = 37, //boolean 
+        StartObject = 33, //{ no hint       
+        StartObject_1 = 34, //followed byte_count of this object,fit in 1 byte
+        StartObject_2 = 35,//followed byte_count  of this object,fit in 2 bytes
+        StartObject_4 = 36,//followed byte_count  of this object,fit in 4 bytes
+        StartObject_8 = 37,//followed byte_count  of this object,fit in 8 bytes
+        EndObject = 38, //}
 
-        //number
-        Byte = 38,  //1
-        SByte = 39,  //1
+        StartArray = 39, //[ no hint
+        StartArray_1 = 40,// followed byte_count of this array,fit in 1 byte
+        StartArray_2 = 41,// followed byte_count of this array,fit in 1 byte
+        StartArray_4 = 42,// followed byte_count of this array,fit in 1 byte
+        StartArray_8 = 43,// followed byte_count of this array,fit in 1 byte
 
-        Int16 = 40, //2
-        UInt16 = 41,//2
-        Char = 42,
+        StartArray_T = 44,//typed array (native,custom) followed byte_count of this array,fit in 1 byte
+        StartArray_T_1 = 45,
+        StartArray_T_2 = 46,
+        StartArray_T_4 = 47,
 
-        Int32 = 43, //4
-        UInt32 = 44, //4
+        EndArray = 48, //]
+        Sep = 49,      //optional,field separator, for marking ,
 
-        Int64 = 45, //8
-        UInt64 = 46,//8
-
-        Float32 = 47, //float , 4
-        Float64 = 48, //double, 8
-
-        DateTime = 49, //8 bytes 
-        Decimal = 50, //extened, 16 bytes (128 bits)
-
-        GUID = 51, // 16 bytes 
-        //----------------
-        //short hand values
+        //-------------------------------------------
+        //50-short hand values, and predefined type
+        Null = 50, //null object, array, string
+        NullString = 51,
         EmptyObject = 52,
         EmptyArray = 53,
         EmptyString = 54,
         EmptyChar = 55,
         EmptyGuid = 56,
-        //-----------------
         DateTimeMin = 57,//0001-01-01 : 00:00:00
         //----------------
         Num0 = 60,
@@ -92,6 +96,8 @@ namespace SharpConnect.Data.Meltable
         BLOB_2 = 75,  //blob with length value fit in 2 bytes, unsigned 
         BLOB_4 = 76, //blob with length value fit in 4 bytes,signed
         BLOB_8 = 77, //blob with length value fit in 8 bytes  
+
+
         //---------------- 
         //system provide value from 0-127 *** (reserved)
         //---------------- 

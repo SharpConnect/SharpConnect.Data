@@ -84,6 +84,59 @@ namespace SharpConnect.Data.Meltable
             writer.Write((byte)MarkerCode.EndObject);
         }
         //------------------------------------------------------------
+        void WriteStartArray_T(MarkerCode elementType, int count)
+        {
+            //element type + encode length
+            //check primitive value that we support 
+#if DEBUG
+            if (count >= 0 && count < 32)
+            {
+                //ok
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+#endif
+
+            //we encode num of element and element type
+            //lower 5 bits for primitive type (0-32)
+            //upper 2 bits for encoded length
+            // 0 : num of element =0
+            // 1 : follow byte 1 bytes
+            // 2 : follow by 2 bytes unsigned
+            // 3 : followed by 4 bytes signed          
+
+            writer.Write((byte)MarkerCode.StartArray_T);
+
+            if (count == 0)
+            {
+                //no element
+                int encodedTypeAndElemCount = ((byte)elementType & 0x1f);
+                writer.Write((byte)encodedTypeAndElemCount);
+            }
+            else if (count < 253)
+            {
+                //use 1 byte
+                int encodedTypeAndElemCount = (1 << 5) | ((byte)elementType & 0x1f);
+                writer.Write((byte)encodedTypeAndElemCount);
+                writer.Write((byte)count);
+            }
+            else if (count < ushort.MaxValue)
+            {
+                int encodedTypeAndByteLength = (2 << 5) | ((byte)elementType & 0x1f);
+                //length marker                 
+                //then
+                writer.Write((byte)encodedTypeAndByteLength);
+                writer.Write((ushort)count);
+            }
+            else
+            {
+                int encodedTypeAndByteLength = (3 << 5) | ((byte)elementType & 0x1f);
+                writer.Write((byte)encodedTypeAndByteLength);
+                writer.Write(count);
+            }
+        }
         void WriteStartArray()
         {
             writer.Write((byte)MarkerCode.StartArray);
@@ -443,10 +496,247 @@ namespace SharpConnect.Data.Meltable
                 }
                 WriteEndObject();
             }
+            else if (o is IList)
+            {
+                WriteIList((IList)o);
+            }
             else
             {
                 throw new NotSupportedException();
 
+            }
+        }
+        void WriteIList(IList o_list)
+        {
+
+            Type t = o_list.GetType();
+            if (t.IsGenericType)
+            {
+                Type[] genArgs = t.GetGenericArguments();
+                bool isHandled = false;
+                if (genArgs != null && genArgs.Length == 1)
+                {
+                    Type elem_type = genArgs[0];
+                    TypeCode typecode = Type.GetTypeCode(elem_type);
+                    MarkerCode arrElemMakerCode = MarkerCode.Unknown;
+
+                    int memberCount = o_list.Count;
+
+                    switch (typecode)
+                    {
+                        case TypeCode.Boolean:
+                            {
+                                arrElemMakerCode = MarkerCode.True; //boolean
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<bool>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Byte:
+                            {
+                                arrElemMakerCode = MarkerCode.Byte;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<byte>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.SByte:
+                            {
+                                arrElemMakerCode = MarkerCode.SByte;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<sbyte>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Char:
+                            {
+                                arrElemMakerCode = MarkerCode.Char;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<char>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Int16:
+                            {
+                                arrElemMakerCode = MarkerCode.Int16;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<short>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Int32:
+                            {
+                                arrElemMakerCode = MarkerCode.Int32;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<int>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Int64:
+                            {
+                                arrElemMakerCode = MarkerCode.Int64;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<long>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.UInt16:
+                            {
+                                arrElemMakerCode = MarkerCode.UInt16;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<ulong>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.UInt32:
+                            {
+                                arrElemMakerCode = MarkerCode.UInt32;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<uint>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.UInt64:
+                            {
+                                arrElemMakerCode = MarkerCode.UInt64;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<ulong>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.DateTime:
+                            {
+                                arrElemMakerCode = MarkerCode.DateTime;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<DateTime>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i].ToBinary());
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Single:
+                            {
+                                arrElemMakerCode = MarkerCode.Float32;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<float>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Double:
+                            {
+                                arrElemMakerCode = MarkerCode.Float64;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<double>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                        case TypeCode.Decimal:
+                            {
+                                arrElemMakerCode = MarkerCode.Decimal;
+                                WriteStartArray_T(arrElemMakerCode, memberCount);
+                                var list = (IList<decimal>)o_list;
+                                for (int i = 0; i < memberCount; ++i)
+                                {
+                                    //write raw bool
+                                    writer.Write(list[i]);
+                                }
+                                WriteEndArray();
+                            }
+                            break;
+                    }
+
+                    if (arrElemMakerCode != MarkerCode.Unknown)
+                    {
+                        isHandled = true;
+                    }
+
+                }
+
+                //check if this support native type array ***
+                if (!isHandled)
+                {
+                    //just normal list
+                    WriteStartArray();
+                    foreach (var e in o_list)
+                    {
+                        WriteObject(e);
+                    }
+                    WriteEndArray();
+                }
+            }
+            else
+            {
+                //just normal list
+                WriteStartArray();
+                foreach (var e in o_list)
+                {
+                    WriteObject(e);
+                }
+                WriteEndArray();
             }
         }
 

@@ -77,6 +77,15 @@ namespace SharpConnect.Data.Meltable
             //expect array value
             _state = ParsingState.ExpectArrayValue;
         }
+        protected override void OnBeginTypedArray(MarkerCode typeOfElement, int elemCount)
+        {
+            PushCurrentState();
+            //enter new state : create new array, and set to current object
+            _currentObject = _currentArray = _doc.CreateArray();
+            //expect array value
+            _state = ParsingState.ExpectArrayValue;
+
+        }
         protected override void OnEndArray()
         {
             //end current array
@@ -93,9 +102,8 @@ namespace SharpConnect.Data.Meltable
                     break;
                 case ParsingState.ExpectKeyValue:
                     _currentElement = (LiquidElement)_currentObject;
-                    _currentElement.AppendAttribute(_keyName, _currentArray);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName; //?
+                   
+                    AppendKeyValue(_currentArray);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -125,8 +133,7 @@ namespace SharpConnect.Data.Meltable
                     break;
                 case ParsingState.ExpectKeyValue:
                     _currentElement = (LiquidElement)_currentObject;
-                    _currentElement.AppendAttribute(_keyName, tmpCurrentObject);
-
+                    AppendKeyValue(tmpCurrentObject); 
                     break;
                 default: throw new NotSupportedException();
             }

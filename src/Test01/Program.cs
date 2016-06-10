@@ -22,7 +22,7 @@ namespace Test01
             elem.AppendAttribute("last_name", "B");
             elem.AppendAttribute("age", 20);
 
-            //test native arrat object
+            //test native array object            
             elem.AppendAttribute("memberlist1", new string[] { "x", "y", "z" });
             elem.AppendAttribute("memberlist2", new object[] { 1, "y", "z" });
 
@@ -32,6 +32,9 @@ namespace Test01
             memberlist3.Add("score3", 30);
             memberlist3.Add("score4", 40);
             elem.AppendAttribute("memberlist3", memberlist3);
+
+            List<int> memberlist4 = new List<int>() { 1, 2, 3, 4, 5 };
+            elem.AppendAttribute("memberlist4", memberlist4);
 
 
             byte[] output = null;
