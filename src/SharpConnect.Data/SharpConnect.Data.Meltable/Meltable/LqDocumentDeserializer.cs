@@ -11,10 +11,10 @@ namespace SharpConnect.Data.Meltable
 
         enum ParsingState : byte
         {
-            Init, 
+            Init,
             ExpectKeyName,
-            ExpectKeyValue, 
-            ExpectArrayValue 
+            ExpectKeyValue,
+            ExpectArrayValue
         }
 
         ParsingState _state;
@@ -26,6 +26,7 @@ namespace SharpConnect.Data.Meltable
 
         Stack<object> _objStack = new Stack<object>();
         Stack<ParsingState> _parseStateStack = new Stack<ParsingState>();
+        Stack<string> _keyNameStack = new Stack<string>();
         string _keyName;
 
         public LiquidDocumentDeserializer()
@@ -59,12 +60,13 @@ namespace SharpConnect.Data.Meltable
         {
             _parseStateStack.Push(_state);
             _objStack.Push(_currentObject);
+            _keyNameStack.Push(_keyName);
         }
         void RestorePrevState()
         {
             _state = _parseStateStack.Pop();
             _currentObject = _objStack.Pop();
-
+            _keyName = _keyNameStack.Pop();
         }
         protected override void OnBeginArray()
         {
@@ -79,7 +81,10 @@ namespace SharpConnect.Data.Meltable
         {
             //end current array
             LiquidArray tmpCurrentObject = _currentArray;
+            string prevKey = _keyName;
+
             RestorePrevState();
+
             switch (_state)
             {
                 case ParsingState.ExpectArrayValue:
@@ -95,7 +100,7 @@ namespace SharpConnect.Data.Meltable
                 default: throw new NotSupportedException();
             }
         }
-        
+
         protected override void OnBeginObject()
         {
             //create new Object
@@ -109,16 +114,22 @@ namespace SharpConnect.Data.Meltable
         {
             //end current object
             LiquidElement tmpCurrentObject = _currentElement;
-            RestorePrevState(); 
+            string prevKey = _keyName;
+            RestorePrevState();
             switch (_state)
             {
                 case ParsingState.Init:
-                case ParsingState.ExpectKeyName:
+                    break;
+                case ParsingState.ExpectArrayValue:
+                    throw new NotSupportedException();
+                    break;
+                case ParsingState.ExpectKeyValue:
+                    _currentElement = (LiquidElement)_currentObject;
+                    _currentElement.AppendAttribute(_keyName, tmpCurrentObject);
+
                     break;
                 default: throw new NotSupportedException();
             }
-            
-
         }
         protected override void OnBlob(byte[] binaryBlobData)
         {
@@ -128,9 +139,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(binaryBlobData);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, binaryBlobData);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(binaryBlobData);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -143,9 +152,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -158,9 +165,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -171,15 +176,13 @@ namespace SharpConnect.Data.Meltable
             {
                 case ParsingState.ExpectKeyName:
                     _keyName = value.ToString();
-                    _state = ParsingState.ExpectKeyValue; 
+                    _state = ParsingState.ExpectKeyValue;
                     break;
                 case ParsingState.ExpectArrayValue:
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
 
                 default: throw new NotSupportedException();
@@ -197,9 +200,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
 
                 default: throw new NotSupportedException();
@@ -213,9 +214,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(null);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, null);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(null);
                     break;
 
                 default: throw new NotSupportedException();
@@ -229,9 +228,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(null);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, null);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(null);
                     break;
 
                 default: throw new NotSupportedException();
@@ -249,9 +246,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(Guid.Empty);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, Guid.Empty);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(Guid.Empty);
                     break;
 
                 default: throw new NotSupportedException();
@@ -269,9 +264,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem("");
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, "");
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue("");
                     break;
 
                 default: throw new NotSupportedException();
@@ -285,9 +278,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
 
                 default: throw new NotSupportedException();
@@ -305,9 +296,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
 
                 default: throw new NotSupportedException();
@@ -325,9 +314,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
 
                 default: throw new NotSupportedException();
@@ -345,9 +332,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
 
                 default: throw new NotSupportedException();
@@ -365,9 +350,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
 
                 default: throw new NotSupportedException();
@@ -385,9 +368,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(new Guid(guid));
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, new Guid(guid));
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(new Guid(guid));
                     break;
 
                 default: throw new NotSupportedException();
@@ -405,9 +386,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -424,9 +403,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -443,9 +420,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -462,9 +437,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -481,9 +454,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -500,9 +471,7 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(value);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, value);
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(value);
                     break;
                 default: throw new NotSupportedException();
             }
@@ -519,12 +488,15 @@ namespace SharpConnect.Data.Meltable
                     _currentArray.AddItem(Encoding.UTF8.GetString(strdata));
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement.AppendAttribute(_keyName, Encoding.UTF8.GetString(strdata));
-                    _keyName = null;
-                    _state = ParsingState.ExpectKeyName;
+                    AppendKeyValue(Encoding.UTF8.GetString(strdata));
                     break;
                 default: throw new NotSupportedException();
             }
+        }
+        void AppendKeyValue(object keyValue)
+        {
+            _currentElement.AppendAttribute(_keyName, keyValue);
+            _state = ParsingState.ExpectKeyName;
         }
     }
 }
