@@ -18,7 +18,7 @@ namespace SharpConnect.Data
                 string firstline = reader.ReadLine();
                 string[] col_names = ParseCsvLine(firstline);
                 int col_count = col_names.Length;
-                EsDataColumn[] columns = new EsDataColumn[col_count];
+                EsTableColumn[] columns = new EsTableColumn[col_count];
                 for (int i = 0; i < col_count; ++i)
                 {
                     columns[i] = table.CreateDataColumn(col_names[i]);

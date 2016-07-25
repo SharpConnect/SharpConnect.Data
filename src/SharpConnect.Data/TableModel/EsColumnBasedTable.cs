@@ -11,7 +11,7 @@ namespace SharpConnect.Data
     {
         //note: this is column-based table
 
-        List<EsDataColumn> _dataColumns = new List<EsDataColumn>();
+        List<EsTableColumn> _dataColumns = new List<EsTableColumn>();
         Dictionary<string, int> _colNames = new Dictionary<string, int>();
         ColumnNameState _columnNameState = ColumnNameState.Dirty;
         enum ColumnNameState
@@ -50,23 +50,23 @@ namespace SharpConnect.Data
         {
             return _dataColumns[column].GetCellData(row);
         }
-        public EsDataColumn GetColumn(int index)
+        public EsTableColumn GetColumn(int index)
         {
             return _dataColumns[index];
         }
-        public IEnumerable<EsDataColumn> GetColumnIterForward()
+        public IEnumerable<EsTableColumn> GetColumnIterForward()
         {
-            foreach (EsDataColumn col in _dataColumns)
+            foreach (EsTableColumn col in _dataColumns)
             {
                 yield return col;
             }
         }
 
-        public EsDataColumn CreateDataColumn(string colName)
+        public EsTableColumn CreateDataColumn(string colName)
         {
             if (!_colNames.ContainsKey(colName))
             {
-                var dataColumn = new EsDataColumn(this, colName);
+                var dataColumn = new EsTableColumn(this, colName);
                 _dataColumns.Add(dataColumn);
                 _columnNameState = ColumnNameState.Dirty;
                 return dataColumn;
@@ -98,7 +98,7 @@ namespace SharpConnect.Data
             int j = _dataColumns.Count;
             for (int i = 0; i < j; ++i)
             {
-                EsDataColumn col = _dataColumns[i];
+                EsTableColumn col = _dataColumns[i];
                 _colNames[col.ColumnName] = i;
             }
 
@@ -110,12 +110,12 @@ namespace SharpConnect.Data
         }
     }
 
-    public class EsDataColumn
+    public class EsTableColumn
     {
         EsColumnBasedTable _ownerTable;
         List<object> _cells = new List<object>();
         string _name;
-        internal EsDataColumn(EsColumnBasedTable ownerTable, string name)
+        internal EsTableColumn(EsColumnBasedTable ownerTable, string name)
         {
             ColumnName = name;
             _ownerTable = ownerTable;
