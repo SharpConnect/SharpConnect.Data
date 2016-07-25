@@ -180,6 +180,30 @@ namespace SharpConnect.Data
 
     public static class EsElemExtensionMethods
     {
+        public static string GetAttrValueOrDefaultAsString(this EsElem esElem, string attrName)
+        {
+
+            return esElem.GetAttributeValue(attrName) as string;
+        }
+        public static int GetAttrValueOrDefaultAsInt32(this EsElem esElem, string attrName)
+        {
+            object value = esElem.GetAttributeValue(attrName);
+            if (value == null)
+            {
+                return 0;
+            }
+            return (int)value;
+        }
+        public static bool GetAttrValueOrDefaultAsBool(this EsElem esElem, string attrName)
+        {
+            object value = esElem.GetAttributeValue(attrName);
+            if (value == null)
+            {
+                return false;
+            }
+            return (bool)value;
+        }
+        //----------------------------------------------------------------------- 
         public static string GetAttributeValueAsString(this EsElem esElem, string attrName)
         {
             return esElem.GetAttributeValue(attrName) as string;
