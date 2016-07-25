@@ -1,4 +1,4 @@
-﻿//MIT 2015, brezza92, EngineKit and contributors 
+﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,25 +7,25 @@ namespace SharpConnect.Data
     /// <summary>
     /// Json-like Parser
     /// </summary>
-    public static class LqParser
+    public static class EsParser
     {
 #if DEBUG
         public static bool dbug_EnableLogParser = false;
         public static int dbug_file_count = 0;
 #endif
 
-        public static LiquidElement Parse(string jsontext)
+        public static EsElem Parse(string jsontext)
         {
             return Parse(jsontext.ToCharArray());
         }
         static void NotifyError()
         {
         }
-        public static LiquidElement Parse(char[] sourceBuffer)
+        public static EsElem Parse(char[] sourceBuffer)
         {
             return Parse(sourceBuffer, true);
         }
-        public static LiquidElement Parse(char[] sourceBuffer, bool reformat)
+        public static EsElem Parse(char[] sourceBuffer, bool reformat)
         {
             //#if DEBUG
             //            debugDataFormatParserLog dbugDataFormatParser = null;
@@ -50,10 +50,10 @@ namespace SharpConnect.Data
             bool isDoubleNumber = false;
             bool isSuccess = true;
             bool isInKeyPart = false;
-            LiquidDoc doc = new LiquidDoc();
+            EsDoc doc = new EsDoc();
             if (sourceBuffer == null)
             {
-                return LiquidElementHelper.CreateXmlElementForDynamicObject(doc);
+                return EsElemHelper.CreateXmlElementForDynamicObject(doc);
             }
 
 
@@ -109,7 +109,7 @@ namespace SharpConnect.Data
                             }
                             else if (c == '[')
                             {
-                                currentObj = new LqArray();
+                                currentObj = new EaseArray();
                                 currentState = 5;
                                 isInKeyPart = false;
                                 myBuffer.Length = 0;
@@ -139,20 +139,20 @@ namespace SharpConnect.Data
                             }
                             else if (c == '}')
                             {
-                                if (currentObj is LiquidElement)
+                                if (currentObj is EsElem)
                                 {
                                     if (myVElemStack.Count > 0)
                                     {
                                         object velem = myVElemStack.Pop();
-                                        if (velem is LiquidElement)
+                                        if (velem is EsElem)
                                         {
                                             lastestKey = myKeyStack.Pop();
-                                            AddVElement((LiquidElement)velem, lastestKey, currentObj);
+                                            AddVElement((EsElem)velem, lastestKey, currentObj);
                                             currentObj = velem;
                                         }
-                                        else if (velem is LiquidArray)
+                                        else if (velem is EsArr)
                                         {
-                                            AddVElement((LiquidArray)velem, currentObj);
+                                            AddVElement((EsArr)velem, currentObj);
                                             currentObj = velem;
                                             currentState = 7;
                                             isInKeyPart = false;
@@ -194,12 +194,12 @@ namespace SharpConnect.Data
                                 }
                                 else
                                 {
-                                    if (currentObj is LiquidArray)
+                                    if (currentObj is EsArr)
                                     {
                                         object velem = GetVElement(myBuffer, 0);
                                         if (velem != null)
                                         {
-                                            AddVElement((LiquidArray)currentObj, velem);
+                                            AddVElement((EsArr)currentObj, velem);
                                             currentState = 7;
                                         }
                                         else
@@ -213,7 +213,7 @@ namespace SharpConnect.Data
                                         object velem = GetVElement(myBuffer, 0);
                                         if (velem != null)
                                         {
-                                            AddVElement((LiquidElement)currentObj, lastestKey, velem);
+                                            AddVElement((EsElem)currentObj, lastestKey, velem);
                                             currentState = 7;
                                         }
                                         else
@@ -340,7 +340,7 @@ namespace SharpConnect.Data
                             else if (c == '{')
                             {
                                 myVElemStack.Push(currentObj);
-                                if (currentObj is LiquidElement)
+                                if (currentObj is EsElem)
                                 {
                                     myKeyStack.Push(lastestKey);
                                 }
@@ -352,32 +352,32 @@ namespace SharpConnect.Data
                             else if (c == '[')
                             {
                                 myVElemStack.Push(currentObj);
-                                if (currentObj is LiquidElement)
+                                if (currentObj is EsElem)
                                 {
                                     myKeyStack.Push(lastestKey);
                                 }
 
-                                currentObj = new LqArray();
+                                currentObj = new EaseArray();
                                 currentState = 5;
                                 isInKeyPart = false;
                             }
                             else if (c == ']')
                             {
-                                if (currentObj is LiquidArray)
+                                if (currentObj is EsArr)
                                 {
                                     if (myVElemStack.Count > 0)
                                     {
                                         object velem = myVElemStack.Pop();
-                                        if (velem is LiquidElement)
+                                        if (velem is EsElem)
                                         {
                                             lastestKey = myKeyStack.Pop();
-                                            AddVElement((LiquidElement)velem, lastestKey, currentObj);
+                                            AddVElement((EsElem)velem, lastestKey, currentObj);
                                             currentObj = velem;
                                             currentState = 7;
                                         }
                                         else
                                         {
-                                            AddVElement((LiquidArray)velem, currentObj);
+                                            AddVElement((EsArr)velem, currentObj);
                                             currentObj = velem;
                                         }
                                     }
@@ -440,12 +440,12 @@ namespace SharpConnect.Data
                                 }
                                 else
                                 {
-                                    if (currentObj is LiquidElement)
+                                    if (currentObj is EsElem)
                                     {
                                         currentState = 1;
                                         isInKeyPart = true;
                                     }
-                                    else if (currentObj is LiquidArray)
+                                    else if (currentObj is EsArr)
                                     {
                                         currentState = 5;
                                     }
@@ -462,7 +462,7 @@ namespace SharpConnect.Data
                         {
                             if (c == ',')
                             {
-                                if (currentObj is LiquidElement)
+                                if (currentObj is EsElem)
                                 {
                                     currentState = 1;
                                     isInKeyPart = true;
@@ -477,15 +477,15 @@ namespace SharpConnect.Data
                                 if (myVElemStack.Count > 0)
                                 {
                                     object velem = myVElemStack.Pop();
-                                    if (velem is LiquidElement)
+                                    if (velem is EsElem)
                                     {
                                         lastestKey = myKeyStack.Pop();
-                                        AddVElement((LiquidElement)velem, lastestKey, currentObj);
+                                        AddVElement((EsElem)velem, lastestKey, currentObj);
                                         currentObj = velem;
                                     }
                                     else
                                     {
-                                        AddVElement((LiquidArray)velem, currentObj);
+                                        AddVElement((EsArr)velem, currentObj);
                                         currentObj = velem;
                                     }
                                 }
@@ -495,15 +495,15 @@ namespace SharpConnect.Data
                                 if (myVElemStack.Count > 0)
                                 {
                                     object velem = myVElemStack.Pop();
-                                    if (velem is LiquidElement)
+                                    if (velem is EsElem)
                                     {
                                         lastestKey = myKeyStack.Pop();
-                                        AddVElement((LiquidElement)velem, lastestKey, currentObj);
+                                        AddVElement((EsElem)velem, lastestKey, currentObj);
                                         currentObj = velem;
                                     }
                                     else
                                     {
-                                        AddVElement((LiquidArray)velem, currentObj);
+                                        AddVElement((EsArr)velem, currentObj);
                                         currentObj = velem;
                                     }
                                 }
@@ -520,7 +520,7 @@ namespace SharpConnect.Data
                                 {
                                     if (implicitComma)
                                     {
-                                        if (currentObj is LiquidElement)
+                                        if (currentObj is EsElem)
                                         {
                                             currentState = 1;
                                             isInKeyPart = true;
@@ -579,15 +579,15 @@ namespace SharpConnect.Data
                                     if (myVElemStack.Count > 0)
                                     {
                                         object velem = myVElemStack.Pop();
-                                        if (velem is LiquidElement)
+                                        if (velem is EsElem)
                                         {
                                             lastestKey = myKeyStack.Pop();
-                                            AddVElement((LiquidElement)velem, lastestKey, currentObj);
+                                            AddVElement((EsElem)velem, lastestKey, currentObj);
                                             currentObj = velem;
                                         }
                                         else
                                         {
-                                            AddVElement((LiquidArray)velem, currentObj);
+                                            AddVElement((EsArr)velem, currentObj);
                                             currentObj = velem;
                                         }
                                     }
@@ -597,27 +597,27 @@ namespace SharpConnect.Data
                                     if (myVElemStack.Count > 0)
                                     {
                                         object velem = myVElemStack.Pop();
-                                        if (velem is LiquidElement)
+                                        if (velem is EsElem)
                                         {
                                             lastestKey = myKeyStack.Pop();
-                                            AddVElement((LiquidElement)velem, lastestKey, currentObj);
+                                            AddVElement((EsElem)velem, lastestKey, currentObj);
                                             currentObj = velem;
                                         }
                                         else
                                         {
-                                            AddVElement((LiquidArray)velem, currentObj);
+                                            AddVElement((EsArr)velem, currentObj);
                                             currentObj = velem;
                                         }
                                     }
                                 }
                                 else
                                 {
-                                    if (currentObj is LiquidElement)
+                                    if (currentObj is EsElem)
                                     {
                                         currentState = 1;
                                         isInKeyPart = true;
                                     }
-                                    else if (currentObj is LiquidArray)
+                                    else if (currentObj is EsArr)
                                     {
                                         currentState = 5;
                                     }
@@ -674,14 +674,14 @@ namespace SharpConnect.Data
 #endif
             //======================================= 
 
-            if (currentObj is LiquidElement && isSuccess)
+            if (currentObj is EsElem && isSuccess)
             {
                 //WARNNIG: reformat is our extension
                 if (reformat)
                 {
-                    ReFormatLqElement((LiquidElement)currentObj);
+                    ReFormatEsElement((EsElem)currentObj);
                 }
-                return (LiquidElement)currentObj;
+                return (EsElem)currentObj;
             }
             else
             {
@@ -709,21 +709,21 @@ namespace SharpConnect.Data
             return p1 + p2 + p3 + p4;
         }
         /// <summary>
-        /// convert json to lq element
+        /// convert json to es element
         /// </summary>
         /// <param name="element"></param>
-        static void ReFormatLqElement(LiquidElement element)
+        static void ReFormatEsElement(EsElem element)
         {
-            LiquidAttribute childNodeAttr = null;
-            LiquidAttribute nodeNameAttr = null;
+            EsAttr childNodeAttr = null;
+            EsAttr nodeNameAttr = null;
             if (!element.HasOwnerDocument)
             {
                 return;
             }
-            LiquidDoc ownerdoc = element.OwnerDocument;
+            EsDoc ownerdoc = element.OwnerDocument;
             int found_N = element.OwnerDocument.GetStringIndex("!n");
             int found_C = element.OwnerDocument.GetStringIndex("!c");
-            foreach (LiquidAttribute att in element.GetAttributeIterForward())
+            foreach (EsAttr att in element.GetAttributeIterForward())
             {
                 if (found_N != 0 && att.AttributeLocalNameIndex == found_N) //!n
                 {
@@ -744,15 +744,15 @@ namespace SharpConnect.Data
 
             if (childNodeAttr != null)
             {
-                if (childNodeAttr.Value is LiquidArray)
+                if (childNodeAttr.Value is EsArr)
                 {
-                    LiquidArray children = (LiquidArray)childNodeAttr.Value;
+                    EsArr children = (EsArr)childNodeAttr.Value;
                     foreach (object child in children.GetIterForward())
                     {
-                        if (child is LiquidElement)
+                        if (child is EsElem)
                         {
-                            ReFormatLqElement((LiquidElement)child);
-                            element.AppendChild((LiquidElement)child);
+                            ReFormatEsElement((EsElem)child);
+                            element.AppendChild((EsElem)child);
                         }
                         else
                         {
@@ -771,9 +771,9 @@ namespace SharpConnect.Data
             if (terminateChar == ']')
             {
                 object elem = GetVElement(myBuffer, suggestedType);
-                if (currentObj is LiquidArray)
+                if (currentObj is EsArr)
                 {
-                    AddVElement((LiquidArray)currentObj, elem);
+                    AddVElement((EsArr)currentObj, elem);
                     myBuffer.Length = 0;
                     return true;
                 }
@@ -781,9 +781,9 @@ namespace SharpConnect.Data
             else if (terminateChar == '}')
             {
                 object elem = GetVElement(myBuffer, suggestedType);
-                if (currentObj is LiquidElement)
+                if (currentObj is EsElem)
                 {
-                    AddVElement((LiquidElement)currentObj, lastestKey, elem);
+                    AddVElement((EsElem)currentObj, lastestKey, elem);
                     myBuffer.Length = 0;
                     return true;
                 }
@@ -793,15 +793,15 @@ namespace SharpConnect.Data
                 object elem = GetVElement(myBuffer, suggestedType);
                 if (elem != null)
                 {
-                    if (currentObj is LiquidElement)
+                    if (currentObj is EsElem)
                     {
-                        AddVElement((LiquidElement)currentObj, lastestKey, elem);
+                        AddVElement((EsElem)currentObj, lastestKey, elem);
                         myBuffer.Length = 0;
                         return true;
                     }
-                    else if (currentObj is LiquidArray)
+                    else if (currentObj is EsArr)
                     {
-                        AddVElement((LiquidArray)currentObj, elem);
+                        AddVElement((EsArr)currentObj, elem);
                         myBuffer.Length = 0;
                         return true;
                     }
@@ -862,11 +862,11 @@ namespace SharpConnect.Data
             }
             return null;
         }
-        static void AddVElement(LiquidArray dArray, object velemt)
+        static void AddVElement(EsArr dArray, object velemt)
         {
             dArray.AddItem(velemt);
         }
-        static void AddVElement(LiquidElement dObj, string key, object velemt)
+        static void AddVElement(EsElem dObj, string key, object velemt)
         {
             dObj.AppendAttribute(key, velemt);
         }

@@ -1,4 +1,4 @@
-﻿//MIT 2015, brezza92, EngineKit and contributors
+﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
 
 using System;
 using System.Collections.Generic;
@@ -7,11 +7,11 @@ namespace SharpConnect.Data
     /// <summary>
     /// column-based table 
     /// </summary>
-    public class ColumnBasedTable
+    public class EsColumnBasedTable
     {
         //note: this is column-based table
 
-        List<DataColumn> _dataColumns = new List<DataColumn>();
+        List<EsTableColumn> _dataColumns = new List<EsTableColumn>();
         Dictionary<string, int> _colNames = new Dictionary<string, int>();
         ColumnNameState _columnNameState = ColumnNameState.Dirty;
         enum ColumnNameState
@@ -50,23 +50,23 @@ namespace SharpConnect.Data
         {
             return _dataColumns[column].GetCellData(row);
         }
-        public DataColumn GetColumn(int index)
+        public EsTableColumn GetColumn(int index)
         {
             return _dataColumns[index];
         }
-        public IEnumerable<DataColumn> GetColumnIterForward()
+        public IEnumerable<EsTableColumn> GetColumnIterForward()
         {
-            foreach (DataColumn col in _dataColumns)
+            foreach (EsTableColumn col in _dataColumns)
             {
                 yield return col;
             }
         }
 
-        public DataColumn CreateDataColumn(string colName)
+        public EsTableColumn CreateDataColumn(string colName)
         {
             if (!_colNames.ContainsKey(colName))
             {
-                var dataColumn = new DataColumn(this, colName);
+                var dataColumn = new EsTableColumn(this, colName);
                 _dataColumns.Add(dataColumn);
                 _columnNameState = ColumnNameState.Dirty;
                 return dataColumn;
@@ -98,7 +98,7 @@ namespace SharpConnect.Data
             int j = _dataColumns.Count;
             for (int i = 0; i < j; ++i)
             {
-                DataColumn col = _dataColumns[i];
+                EsTableColumn col = _dataColumns[i];
                 _colNames[col.ColumnName] = i;
             }
 
@@ -110,12 +110,12 @@ namespace SharpConnect.Data
         }
     }
 
-    public class DataColumn
+    public class EsTableColumn
     {
-        ColumnBasedTable _ownerTable;
+        EsColumnBasedTable _ownerTable;
         List<object> _cells = new List<object>();
         string _name;
-        internal DataColumn(ColumnBasedTable ownerTable, string name)
+        internal EsTableColumn(EsColumnBasedTable ownerTable, string name)
         {
             ColumnName = name;
             _ownerTable = ownerTable;
@@ -138,7 +138,7 @@ namespace SharpConnect.Data
                 _name = value;
             }
         }
-        public ColumnTypeHint TypeHint
+        public EsColumnTypeHint TypeHint
         {
             get;
             set;
@@ -152,7 +152,7 @@ namespace SharpConnect.Data
             return _cells[rowIndex];
         }
     }
-    public enum ColumnTypeHint
+    public enum EsColumnTypeHint
     {
         Unknown,
         String,
