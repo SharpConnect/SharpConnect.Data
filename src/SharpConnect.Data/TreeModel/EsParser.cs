@@ -679,7 +679,7 @@ namespace SharpConnect.Data
                 //WARNNIG: reformat is our extension
                 if (reformat)
                 {
-                    ReFormatLqElement((EsElem)currentObj);
+                    ReFormatEsElement((EsElem)currentObj);
                 }
                 return (EsElem)currentObj;
             }
@@ -709,10 +709,10 @@ namespace SharpConnect.Data
             return p1 + p2 + p3 + p4;
         }
         /// <summary>
-        /// convert json to lq element
+        /// convert json to es element
         /// </summary>
         /// <param name="element"></param>
-        static void ReFormatLqElement(EsElem element)
+        static void ReFormatEsElement(EsElem element)
         {
             EsAttr childNodeAttr = null;
             EsAttr nodeNameAttr = null;
@@ -751,7 +751,7 @@ namespace SharpConnect.Data
                     {
                         if (child is EsElem)
                         {
-                            ReFormatLqElement((EsElem)child);
+                            ReFormatEsElement((EsElem)child);
                             element.AppendChild((EsElem)child);
                         }
                         else

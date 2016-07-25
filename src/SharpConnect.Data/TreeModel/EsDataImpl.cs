@@ -180,62 +180,62 @@ namespace SharpConnect.Data
 
     public static class EsElemExtensionMethods
     {
-        public static string GetAttributeValueAsString(this EsElem lqElement, string attrName)
+        public static string GetAttributeValueAsString(this EsElem esElem, string attrName)
         {
-            return lqElement.GetAttributeValue(attrName) as string;
+            return esElem.GetAttributeValue(attrName) as string;
         }
-        public static int GetAttributeValueAsInt32(this EsElem lqElement, string attrName)
+        public static int GetAttributeValueAsInt32(this EsElem esElem, string attrName)
         {
-            return (int)lqElement.GetAttributeValue(attrName);
+            return (int)esElem.GetAttributeValue(attrName);
         }
-        public static bool GetAttributeValueAsBool(this EsElem lqElement, string attrName)
+        public static bool GetAttributeValueAsBool(this EsElem esElem, string attrName)
         {
-            return (bool)lqElement.GetAttributeValue(attrName);
+            return (bool)esElem.GetAttributeValue(attrName);
         }
-        public static EsArr GetAttributeValueAsArray(this EsElem lqElement, string attrName)
+        public static EsArr GetAttributeValueAsArray(this EsElem esElem, string attrName)
         {
-            return lqElement.GetAttributeValue(attrName) as EsArr;
+            return esElem.GetAttributeValue(attrName) as EsArr;
         }
         //-----------------------------------------------------------------------
-        public static void WriteJson(this EsDoc lqdoc, StringBuilder stBuilder)
+        public static void WriteJson(this EsDoc doc, StringBuilder stBuilder)
         {
             //write to 
-            var docElem = lqdoc.DocumentElement;
+            var docElem = doc.DocumentElement;
             if (docElem != null)
             {
                 WriteJson(docElem, stBuilder);
             }
         }
-        static void WriteJson(object lqElem, StringBuilder stBuilder)
+        static void WriteJson(object elem, StringBuilder stBuilder)
         {
             //recursive
-            if (lqElem == null)
+            if (elem == null)
             {
                 stBuilder.Append("null");
             }
-            else if (lqElem is string)
+            else if (elem is string)
             {
                 stBuilder.Append('"');
-                stBuilder.Append((string)lqElem);
+                stBuilder.Append((string)elem);
                 stBuilder.Append('"');
             }
-            else if (lqElem is double)
+            else if (elem is double)
             {
-                stBuilder.Append(((double)lqElem).ToString());
+                stBuilder.Append(((double)elem).ToString());
             }
-            else if (lqElem is float)
+            else if (elem is float)
             {
-                stBuilder.Append(((float)lqElem).ToString());
+                stBuilder.Append(((float)elem).ToString());
             }
-            else if (lqElem is int)
+            else if (elem is int)
             {
-                stBuilder.Append(((int)lqElem).ToString());
+                stBuilder.Append(((int)elem).ToString());
             }
-            else if (lqElem is Array)
+            else if (elem is Array)
             {
                 stBuilder.Append('[');
                 //write element into array
-                Array a = lqElem as Array;
+                Array a = elem as Array;
                 int j = a.Length;
                 for (int i = 0; i < j; ++i)
                 {
@@ -247,9 +247,9 @@ namespace SharpConnect.Data
                 }
                 stBuilder.Append(']');
             }
-            else if (lqElem is EaseElement)
+            else if (elem is EaseElement)
             {
-                EaseElement leqE = (EaseElement)lqElem;
+                EaseElement leqE = (EaseElement)elem;
                 stBuilder.Append('{');
                 //check docattr= 
                 var nameAttr = leqE.GetAttribute("!n");
@@ -309,7 +309,7 @@ namespace SharpConnect.Data
             }
         }
         //-----------------------------------------------------------------------
-        public static void WriteXml(this EsDoc lqdoc, StringBuilder stbuiolder)
+        public static void WriteXml(this EsDoc doc, StringBuilder stbuiolder)
         {
             throw new NotSupportedException();
         }
