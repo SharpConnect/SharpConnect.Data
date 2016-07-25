@@ -15,7 +15,7 @@ namespace SharpConnect.Data
         void AppendAttribute(EsAttr attr);
         EsAttr AppendAttribute(string key, object value);
         object GetAttributeValue(string key);
-        EsAttr GetAttributeElement(string key);
+        EsAttr GetAttribute(string key);
         int ChildCount { get; }
         object GetChild(int index);
     }

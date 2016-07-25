@@ -126,7 +126,7 @@ namespace SharpConnect.Data
 
         public object GetAttributeValue(string key)
         {
-            EsAttr found = GetAttributeElement(key);
+            EsAttr found = GetAttribute(key);
             if (found != null)
             {
                 return found.Value;
@@ -136,7 +136,7 @@ namespace SharpConnect.Data
                 return null;
             }
         }
-        public EsAttr GetAttributeElement(string key)
+        public EsAttr GetAttribute(string key)
         {
             EsAttr existing;
             _attributeDic01.TryGetValue(key, out existing);
@@ -187,6 +187,10 @@ namespace SharpConnect.Data
         public static int GetAttributeValueAsInt32(this EsElem lqElement, string attrName)
         {
             return (int)lqElement.GetAttributeValue(attrName);
+        }
+        public static bool GetAttributeValueAsBool(this EsElem lqElement, string attrName)
+        {
+            return (bool)lqElement.GetAttributeValue(attrName);
         }
         public static EsArr GetAttributeValueAsArray(this EsElem lqElement, string attrName)
         {
@@ -248,7 +252,7 @@ namespace SharpConnect.Data
                 EaseElement leqE = (EaseElement)lqElem;
                 stBuilder.Append('{');
                 //check docattr= 
-                var nameAttr = leqE.GetAttributeElement("!n");
+                var nameAttr = leqE.GetAttribute("!n");
                 if (nameAttr == null)
                 {
                     //use specific name
