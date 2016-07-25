@@ -1,12 +1,11 @@
-﻿//MIT 2015, brezza92, EngineKit and contributors
+﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 namespace SharpConnect.Data
 {
-    class LqArray : List<object>, LiquidArray
+    class EaseArray : List<object>, EsArr
     {
         public void AddItem(object item)
         {
@@ -20,24 +19,24 @@ namespace SharpConnect.Data
             }
         }
     }
-    static class LiquidElementHelper
+    static class EsElemHelper
     {
-        public static LiquidElement CreateXmlElementForDynamicObject(LiquidDoc doc)
+        public static EsElem CreateXmlElementForDynamicObject(EsDoc doc)
         {
-            return new LqElement("!j", null);
+            return new EaseElement("!j", null);
         }
     }
 
-    class LqElement : LiquidElement
+    class EaseElement : EsElem
     {
         //xml-like element
 
         string _name;
         int _nameIndex;
-        LiquidDoc _owner;
-        List<LiquidElement> _childNodes;
-        Dictionary<string, LiquidAttribute> _attributeDic01 = new Dictionary<string, LiquidAttribute>();
-        public LqElement(string elementName, LiquidDoc ownerdoc)
+        EsDoc _owner;
+        List<EsElem> _childNodes;
+        Dictionary<string, EsAttr> _attributeDic01 = new Dictionary<string, EsAttr>();
+        public EaseElement(string elementName, EsDoc ownerdoc)
         {
             _name = elementName;
             _owner = ownerdoc;
@@ -53,7 +52,7 @@ namespace SharpConnect.Data
                 _name = value;
             }
         }
-        public LiquidDoc OwnerDocument
+        public EsDoc OwnerDocument
         {
             get
             {
@@ -92,42 +91,42 @@ namespace SharpConnect.Data
                 return _nameIndex;
             }
         }
-        public IEnumerable<LiquidAttribute> GetAttributeIterForward()
+        public IEnumerable<EsAttr> GetAttributeIterForward()
         {
             if (_attributeDic01 != null)
             {
-                foreach (LiquidAttribute attr in this._attributeDic01.Values)
+                foreach (EsAttr attr in this._attributeDic01.Values)
                 {
                     yield return attr;
                 }
             }
         }
-        public void AppendChild(LiquidElement element)
+        public void AppendChild(EsElem element)
         {
             if (_childNodes == null)
             {
-                _childNodes = new List<LiquidElement>();
+                _childNodes = new List<EsElem>();
             }
             _childNodes.Add(element);
         }
-        public void RemoveAttribute(LiquidAttribute attr)
+        public void RemoveAttribute(EsAttr attr)
         {
             _attributeDic01.Remove(attr.Name);
         }
-        public void AppendAttribute(LiquidAttribute attr)
+        public void AppendAttribute(EsAttr attr)
         {
             _attributeDic01.Add(attr.Name, attr);
         }
-        public LiquidAttribute AppendAttribute(string key, object value)
+        public EsAttr AppendAttribute(string key, object value)
         {
-            var attr = new LqAttribute(key, value);
+            var attr = new EaseAttribute(key, value);
             _attributeDic01.Add(key, attr);
             return attr;
         }
 
         public object GetAttributeValue(string key)
         {
-            LiquidAttribute found = GetAttributeElement(key);
+            EsAttr found = GetAttribute(key);
             if (found != null)
             {
                 return found.Value;
@@ -137,20 +136,20 @@ namespace SharpConnect.Data
                 return null;
             }
         }
-        public LiquidAttribute GetAttributeElement(string key)
+        public EsAttr GetAttribute(string key)
         {
-            LiquidAttribute existing;
+            EsAttr existing;
             _attributeDic01.TryGetValue(key, out existing);
             return existing;
         }
     }
-    class LqAttribute : LiquidAttribute
+    class EaseAttribute : EsAttr
     {
         int _localNameIndex;
-        public LqAttribute()
+        public EaseAttribute()
         {
         }
-        public LqAttribute(string name, object value)
+        public EaseAttribute(string name, object value)
         {
             Name = name;
             Value = value;
@@ -179,60 +178,88 @@ namespace SharpConnect.Data
         }
     }
 
-    public static class LiquidExtensionMethods
+    public static class EsElemExtensionMethods
     {
-        public static string GetAttributeValueAsString(this LiquidElement lqElement, string attrName)
+        public static string GetAttrValueOrDefaultAsString(this EsElem esElem, string attrName)
         {
-            return lqElement.GetAttributeValue(attrName) as string;
+
+            return esElem.GetAttributeValue(attrName) as string;
         }
-        public static int GetAttributeValueAsInt32(this LiquidElement lqElement, string attrName)
+        public static int GetAttrValueOrDefaultAsInt32(this EsElem esElem, string attrName)
         {
-            return (int)lqElement.GetAttributeValue(attrName);
+            object value = esElem.GetAttributeValue(attrName);
+            if (value == null)
+            {
+                return 0;
+            }
+            return (int)value;
         }
-        public static LiquidArray GetAttributeValueAsArray(this LiquidElement lqElement, string attrName)
+        public static bool GetAttrValueOrDefaultAsBool(this EsElem esElem, string attrName)
         {
-            return lqElement.GetAttributeValue(attrName) as LiquidArray;
+            object value = esElem.GetAttributeValue(attrName);
+            if (value == null)
+            {
+                return false;
+            }
+            return (bool)value;
+        }
+        //----------------------------------------------------------------------- 
+        public static string GetAttributeValueAsString(this EsElem esElem, string attrName)
+        {
+            return esElem.GetAttributeValue(attrName) as string;
+        }
+        public static int GetAttributeValueAsInt32(this EsElem esElem, string attrName)
+        {
+            return (int)esElem.GetAttributeValue(attrName);
+        }
+        public static bool GetAttributeValueAsBool(this EsElem esElem, string attrName)
+        {
+            return (bool)esElem.GetAttributeValue(attrName);
+        }
+        public static EsArr GetAttributeValueAsArray(this EsElem esElem, string attrName)
+        {
+            return esElem.GetAttributeValue(attrName) as EsArr;
         }
         //-----------------------------------------------------------------------
-        public static void WriteJson(this LiquidDoc lqdoc, StringBuilder stBuilder)
+        public static void WriteJson(this EsDoc doc, StringBuilder stBuilder)
         {
             //write to 
-            var docElem = lqdoc.DocumentElement;
+            var docElem = doc.DocumentElement;
             if (docElem != null)
             {
                 WriteJson(docElem, stBuilder);
             }
         }
-        static void WriteJson(object lqElem, StringBuilder stBuilder)
+        static void WriteJson(object elem, StringBuilder stBuilder)
         {
             //recursive
-            if (lqElem == null)
+            if (elem == null)
             {
                 stBuilder.Append("null");
             }
-            else if (lqElem is string)
+            else if (elem is string)
             {
                 stBuilder.Append('"');
-                stBuilder.Append((string)lqElem);
+                stBuilder.Append((string)elem);
                 stBuilder.Append('"');
             }
-            else if (lqElem is double)
+            else if (elem is double)
             {
-                stBuilder.Append(((double)lqElem).ToString());
+                stBuilder.Append(((double)elem).ToString());
             }
-            else if (lqElem is float)
+            else if (elem is float)
             {
-                stBuilder.Append(((float)lqElem).ToString());
+                stBuilder.Append(((float)elem).ToString());
             }
-            else if (lqElem is int)
+            else if (elem is int)
             {
-                stBuilder.Append(((int)lqElem).ToString());
+                stBuilder.Append(((int)elem).ToString());
             }
-            else if (lqElem is Array)
+            else if (elem is Array)
             {
                 stBuilder.Append('[');
                 //write element into array
-                Array a = lqElem as Array;
+                Array a = elem as Array;
                 int j = a.Length;
                 for (int i = 0; i < j; ++i)
                 {
@@ -244,12 +271,12 @@ namespace SharpConnect.Data
                 }
                 stBuilder.Append(']');
             }
-            else if (lqElem is LqElement)
+            else if (elem is EaseElement)
             {
-                LqElement leqE = (LqElement)lqElem;
+                EaseElement leqE = (EaseElement)elem;
                 stBuilder.Append('{');
                 //check docattr= 
-                var nameAttr = leqE.GetAttributeElement("!n");
+                var nameAttr = leqE.GetAttribute("!n");
                 if (nameAttr == null)
                 {
                     //use specific name
@@ -306,7 +333,7 @@ namespace SharpConnect.Data
             }
         }
         //-----------------------------------------------------------------------
-        public static void WriteXml(this LiquidDoc lqdoc, StringBuilder stbuiolder)
+        public static void WriteXml(this EsDoc doc, StringBuilder stbuiolder)
         {
             throw new NotSupportedException();
         }

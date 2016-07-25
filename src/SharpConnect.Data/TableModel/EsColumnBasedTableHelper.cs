@@ -1,4 +1,4 @@
-﻿//MIT 2015, brezza92, EngineKit and contributors
+﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
 
 using System;
 using System.Collections.Generic;
@@ -6,11 +6,11 @@ using System.IO;
 using System.Text;
 namespace SharpConnect.Data
 {
-    public static class ColumnBasedTableHelper
+    public static class EsColumnBasedTableHelper
     {
-        public static ColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc)
+        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc)
         {
-            var table = new ColumnBasedTable();
+            var table = new EsColumnBasedTable();
             using (var fs = new FileStream(file, FileMode.Open))
             {
                 var reader = new StreamReader(fs, enc);
@@ -18,7 +18,7 @@ namespace SharpConnect.Data
                 string firstline = reader.ReadLine();
                 string[] col_names = ParseCsvLine(firstline);
                 int col_count = col_names.Length;
-                DataColumn[] columns = new DataColumn[col_count];
+                EsTableColumn[] columns = new EsTableColumn[col_count];
                 for (int i = 0; i < col_count; ++i)
                 {
                     columns[i] = table.CreateDataColumn(col_names[i]);
