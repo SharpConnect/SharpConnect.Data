@@ -3,29 +3,29 @@
 using System.Collections.Generic;
 namespace SharpConnect.Data
 {
-    public interface LiquidElement
+    public interface EsElem
     {
         string Name { get; set; }
-        LiquidDoc OwnerDocument { get; }
+        EsDoc OwnerDocument { get; }
         bool HasOwnerDocument { get; }
         int NameIndex { get; }
-        IEnumerable<LiquidAttribute> GetAttributeIterForward();
-        void RemoveAttribute(LiquidAttribute attr);
-        void AppendChild(LiquidElement element);
-        void AppendAttribute(LiquidAttribute attr);
-        LiquidAttribute AppendAttribute(string key, object value);
+        IEnumerable<EsAttr> GetAttributeIterForward();
+        void RemoveAttribute(EsAttr attr);
+        void AppendChild(EsElem element);
+        void AppendAttribute(EsAttr attr);
+        EsAttr AppendAttribute(string key, object value);
         object GetAttributeValue(string key);
-        LiquidAttribute GetAttributeElement(string key);
+        EsAttr GetAttributeElement(string key);
         int ChildCount { get; }
         object GetChild(int index);
     }
-    public interface LiquidAttribute
+    public interface EsAttr
     {
         string Name { get; set; }
         object Value { get; set; }
         int AttributeLocalNameIndex { get; }
     }
-    public interface LiquidArray
+    public interface EsArr
     {
         void AddItem(object item);
         IEnumerable<object> GetIterForward();
@@ -34,16 +34,16 @@ namespace SharpConnect.Data
         object this[int index] { get; set; }
     }
 
-    public class LiquidDoc
+    public class EsDoc
     {
         Dictionary<string, int> stringTable = new Dictionary<string, int>();
-        public LiquidElement CreateElement(string elementName)
+        public EsElem CreateElement(string elementName)
         {
-            return new LqElement(elementName, this);
+            return new EaseElement(elementName, this);
         }
-        public LiquidArray CreateArray()
+        public EsArr CreateArray()
         {
-            return new LqArray();
+            return new EaseArray();
         }
         public int GetStringIndex(string str)
         {
@@ -51,7 +51,7 @@ namespace SharpConnect.Data
             stringTable.TryGetValue(str, out found);
             return found;
         }
-        public LiquidElement DocumentElement
+        public EsElem DocumentElement
         {
             get;
             set;
