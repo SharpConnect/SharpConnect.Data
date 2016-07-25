@@ -1,7 +1,5 @@
-﻿//MIT 2015, brezza92, EngineKit and contributors
-
+﻿//MIT 2015, brezza92, EngineKit and contributors 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 namespace SharpConnect.Data
@@ -288,6 +286,7 @@ namespace SharpConnect.Data
                                         uint c_uint = ParseUnicode(sourceBuffer[i + 1], sourceBuffer[i + 2], sourceBuffer[i + 3], sourceBuffer[i + 4]);
                                         myBuffer.Append((char)c_uint);
                                         i += 4;
+                                        isSuccess = true;
                                     }
                                     break;
                                 default:
