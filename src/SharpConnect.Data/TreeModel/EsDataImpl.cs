@@ -230,9 +230,94 @@ namespace SharpConnect.Data
                 WriteJson(docElem, stBuilder);
             }
         }
+        static void WriteJson(EsArr esArr, StringBuilder stBuilder)
+        {
+            stBuilder.Append('[');
+            int j = esArr.Count;
+            for (int i = 0; i < j; ++i)
+            {
+                if (i > 0)
+                {
+                    stBuilder.Append(',');
+                }
+                WriteJson(esArr[i], stBuilder);
+            }
+            stBuilder.Append(']');
+        }
+        public static void WriteJson(this EsElem esElem, StringBuilder stBuilder)
+        {
+
+            EaseElement leqE = (EaseElement)esElem;
+            stBuilder.Append('{');
+            //check docattr= 
+            var nameAttr = leqE.GetAttribute("!n");
+            int attrCount = 0;
+            if (nameAttr == null)
+            {
+                //TODO: review here if we want auto element name or not?
+                //use specific name
+                //stBuilder.Append("\"!n\":\"");
+                //stBuilder.Append(leqE.Name);
+                //stBuilder.Append('"');
+            }
+            else
+            {
+                //use default elementname
+                stBuilder.Append("\"!n\":\"");
+                //TODO: review string escape here ***
+                stBuilder.Append(leqE.Name);
+                stBuilder.Append('"');
+                attrCount = 1;
+            }
+
+
+            foreach (var attr in leqE.GetAttributeIterForward())
+            {
+                if (attr.Name == "!n")
+                {
+                    continue;
+                }
+                if (attrCount > 0)
+                {
+                    stBuilder.Append(',');
+                }
+                stBuilder.Append('"');
+                stBuilder.Append(attr.Name); //TODO: review escape string here
+                stBuilder.Append('"');
+                stBuilder.Append(':');
+                WriteJson(attr.Value, stBuilder);
+                attrCount++;
+            }
+            //-------------------
+            //for children nodes
+            int j = leqE.ChildCount;
+            //create children nodes
+            if (j > 0)
+            {
+                if (attrCount > 0)
+                {
+                    stBuilder.Append(',');
+                } 
+                stBuilder.Append("\"!c\":[");
+                for (int i = 0; i < j; ++i)
+                {
+                    if (i > 0)
+                    {
+                        stBuilder.Append(',');
+                    }
+                    WriteJson(leqE.GetChild(i), stBuilder);                     
+                }
+                stBuilder.Append(']');
+            }
+            //-------------------
+            stBuilder.Append('}');
+        }
         static void WriteJson(object elem, StringBuilder stBuilder)
         {
             //recursive
+#if DEBUG
+            Type t = elem.GetType();
+#endif
             if (elem == null)
             {
                 stBuilder.Append("null");
@@ -243,17 +328,13 @@ namespace SharpConnect.Data
                 stBuilder.Append((string)elem);
                 stBuilder.Append('"');
             }
-            else if (elem is double)
+            else if (elem is double ||
+                (elem is float) ||
+                (elem is int) ||
+                (elem is uint))
             {
-                stBuilder.Append(((double)elem).ToString());
-            }
-            else if (elem is float)
-            {
-                stBuilder.Append(((float)elem).ToString());
-            }
-            else if (elem is int)
-            {
-                stBuilder.Append(((int)elem).ToString());
+                //TODO: review all primitive conversion
+                stBuilder.Append(elem.ToString());
             }
             else if (elem is Array)
             {
@@ -263,73 +344,25 @@ namespace SharpConnect.Data
                 int j = a.Length;
                 for (int i = 0; i < j; ++i)
                 {
-                    WriteJson(a.GetValue(i), stBuilder);
                     if (i > 0)
                     {
                         stBuilder.Append(',');
                     }
+                    WriteJson(a.GetValue(i), stBuilder); 
                 }
                 stBuilder.Append(']');
             }
             else if (elem is EaseElement)
             {
-                EaseElement leqE = (EaseElement)elem;
-                stBuilder.Append('{');
-                //check docattr= 
-                var nameAttr = leqE.GetAttribute("!n");
-                if (nameAttr == null)
-                {
-                    //use specific name
-                    stBuilder.Append("\"!n\":\"");
-                    stBuilder.Append(leqE.Name);
-                    stBuilder.Append('"');
-                }
-                else
-                {
-                    //use default elementname
-                    stBuilder.Append("\"!n\":\"");
-                    stBuilder.Append(leqE.Name);
-                    stBuilder.Append('"');
-                }
-
-                int attrCount = 1;
-                foreach (var attr in leqE.GetAttributeIterForward())
-                {
-                    if (attr.Name == "!n")
-                    {
-                        continue;
-                    }
-                    stBuilder.Append(',');
-                    stBuilder.Append('"');
-                    stBuilder.Append(attr.Name);
-                    stBuilder.Append('"');
-                    stBuilder.Append(':');
-                    WriteJson(attr.Value, stBuilder);
-                    attrCount++;
-                }
-                //-------------------
-                //for children nodes
-                int j = leqE.ChildCount;
-                //create children nodes
-                if (j > 0)
-                {
-                    stBuilder.Append(',');
-                    stBuilder.Append("\"!c\":[");
-                    for (int i = 0; i < j; ++i)
-                    {
-                        WriteJson(leqE.GetChild(i), stBuilder);
-                        if (i < j - 1)
-                        {
-                            stBuilder.Append(',');
-                        }
-                    }
-                    stBuilder.Append(']');
-                }
-                //-------------------
-                stBuilder.Append('}');
+                WriteJson((EsElem)elem, stBuilder);
+            }
+            else if (elem is EsArr)
+            {
+                WriteJson((EsArr)elem, stBuilder);
             }
             else
             {
+                throw new NotSupportedException();
             }
         }
         //-----------------------------------------------------------------------
