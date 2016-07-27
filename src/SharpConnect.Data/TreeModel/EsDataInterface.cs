@@ -18,6 +18,7 @@ namespace SharpConnect.Data
         EsAttr GetAttribute(string key);
         int ChildCount { get; }
         object GetChild(int index);
+        object this[string attrName] { get; set; }
     }
     public interface EsAttr
     {
@@ -40,6 +41,10 @@ namespace SharpConnect.Data
         public EsElem CreateElement(string elementName)
         {
             return new EaseElement(elementName, this);
+        }
+        public EsElem CreateElement()
+        {
+            return new EaseElement("", this);
         }
         public EsArr CreateArray()
         {

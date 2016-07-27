@@ -142,6 +142,33 @@ namespace SharpConnect.Data
             _attributeDic01.TryGetValue(key, out existing);
             return existing;
         }
+        /// <summary>
+        /// get attribute value if exist / set=> insert or replace existing value with specific value
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public object this[string key]
+        {
+            get
+            {
+                EsAttr found = GetAttribute(key);
+                if (found == null)
+                {
+                    return null;
+                }
+                else
+                {
+                    return found.Value;
+                }
+            }
+            set
+            {
+                //replace value if existing
+                //we create new attr and replace it
+                //so it not affect existing attr
+                _attributeDic01[key] = new EaseAttribute(key, value);
+            }
+        }
     }
     class EaseAttribute : EsAttr
     {
@@ -297,7 +324,7 @@ namespace SharpConnect.Data
                 if (attrCount > 0)
                 {
                     stBuilder.Append(',');
-                } 
+                }
                 stBuilder.Append("\"!c\":[");
                 for (int i = 0; i < j; ++i)
                 {
@@ -305,13 +332,22 @@ namespace SharpConnect.Data
                     {
                         stBuilder.Append(',');
                     }
-                    WriteJson(leqE.GetChild(i), stBuilder);                     
+                    WriteJson(leqE.GetChild(i), stBuilder);
                 }
                 stBuilder.Append(']');
             }
             //-------------------
             stBuilder.Append('}');
         }
+
+        public static string ToJsonString(this EsElem esElem)
+        {
+            var stbuilder = new StringBuilder();
+            esElem.WriteJson(stbuilder);
+            return stbuilder.ToString();
+        }
+
+
         static void WriteJson(object elem, StringBuilder stBuilder)
         {
             //recursive
@@ -348,7 +384,7 @@ namespace SharpConnect.Data
                     {
                         stBuilder.Append(',');
                     }
-                    WriteJson(a.GetValue(i), stBuilder); 
+                    WriteJson(a.GetValue(i), stBuilder);
                 }
                 stBuilder.Append(']');
             }
