@@ -209,7 +209,6 @@ namespace SharpConnect.Data
     {
         public static string GetAttrValueOrDefaultAsString(this EsElem esElem, string attrName)
         {
-
             return esElem.GetAttributeValue(attrName) as string;
         }
         public static int GetAttrValueOrDefaultAsInt32(this EsElem esElem, string attrName)
@@ -219,7 +218,19 @@ namespace SharpConnect.Data
             {
                 return 0;
             }
-            return (int)value;
+            return Convert.ToInt32(value);
+        }
+        public static double GetAttrValueOrDefaultAsDouble(this EsElem esElem, string attrName)
+        {
+            object value = esElem.GetAttributeValue(attrName);
+#if DEBUG
+            var t = value.GetType();
+#endif
+            if (value == null)
+            {
+                return 0;
+            }
+            return Convert.ToDouble(value);
         }
         public static bool GetAttrValueOrDefaultAsBool(this EsElem esElem, string attrName)
         {
