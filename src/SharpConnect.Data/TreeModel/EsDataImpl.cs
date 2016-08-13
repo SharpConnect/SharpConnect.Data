@@ -38,7 +38,7 @@ namespace SharpConnect.Data
         public EsElem Parse(string jsonstr)
         {
             char[] buffer = jsonstr.ToCharArray();
-            return Parse(buffer);         
+            return Parse(buffer);
         }
         public EsElem Parse(char[] jsonstr)
         {
@@ -74,11 +74,16 @@ namespace SharpConnect.Data
         }
         protected override void BeginObject()
         {
+            if (currentKey != null)
+            {
+                keyStack.Push(currentKey);
+            }
             if (currentElem != null)
             {
                 elemStack.Push(currentElem);
             }
             currentElem = easeDoc.CreateElement();
+
         }
         protected override void EndObject()
         {
@@ -95,6 +100,7 @@ namespace SharpConnect.Data
                 }
                 if (currentElem is EsElem)
                 {
+                    currentKey = keyStack.Pop();
                     ((EsElem)currentElem)[currentKey] = c_object;
                 }
                 else if (currentElem is EsArr)
@@ -129,6 +135,7 @@ namespace SharpConnect.Data
                 }
                 if (currentElem is EsElem)
                 {
+                    currentKey = keyStack.Pop();
                     ((EsElem)currentElem)[currentKey] = c_object;
                 }
                 else if (currentElem is EsArr)
@@ -148,6 +155,7 @@ namespace SharpConnect.Data
         protected override void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
         {
             //add key to current object
+
             currentKey = tmpBuffer.ToString();
         }
         protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
