@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.IO;
+
 namespace SharpConnect.Data
 {
 
@@ -58,7 +58,7 @@ namespace SharpConnect.Data
         {
             if (dbug_EnableLogParser)
             {
-                dbugDataFormatParser.Init("d:\\WImageTest\\parse_json.txt");
+                dbugEsParserLogger.Init("d:\\WImageTest\\parse_json.txt");
             }
         }
 #endif 
@@ -149,7 +149,7 @@ namespace SharpConnect.Data
 #if DEBUG
                 if (dbug_EnableLogParser)
                 {
-                    dbugDataFormatParser.WriteLine(new string('\t', elemKindStack.Count) + i + " ," + c.ToString() + "," + currentState);
+                    dbugEsParserLogger.WriteLine(new string('\t', elemKindStack.Count) + i + " ," + c.ToString() + "," + currentState);
                 }
 #endif
                 //--------------------------  
@@ -794,37 +794,5 @@ namespace SharpConnect.Data
             uint p4 = ParseSingleChar(c4, 1);
             return p1 + p2 + p3 + p4;
         }
-    }
-
-
-#if DEBUG
-    static class dbugDataFormatParser
-    {
-        static FileStream dbugFs;
-        static StreamWriter writer;
-        public static void Init(string outputfile)
-        {
-            if (writer != null)
-            {
-                writer.Close();
-                writer.Dispose();
-                writer = null;
-            }
-            if (dbugFs != null)
-            {
-                dbugFs.Close();
-                dbugFs = null;
-            }
-            //-------------------------
-            dbugFs = new FileStream(outputfile, FileMode.Create);
-            writer = new StreamWriter(dbugFs);
-            writer.AutoFlush = true;
-        }
-        public static void WriteLine(string text)
-        {
-            writer.WriteLine(text);
-        }
-
-    }
-#endif
+    } 
 }
