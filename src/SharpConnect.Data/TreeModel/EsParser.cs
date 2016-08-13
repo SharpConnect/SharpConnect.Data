@@ -814,16 +814,14 @@ namespace SharpConnect.Es
         string currentKey = null;
 
 
-
-
         public EsParserBase()
         {
 
         }
-        protected abstract E createElement();
-        protected abstract A createArray();
-        protected abstract void addElementAttribute(E targetElem, string key, object value);
-        protected abstract void addArrayElement(A targetArray, object value);
+        protected abstract E CreateElement();
+        protected abstract A CreateArray();
+        protected abstract void AddElementAttribute(E targetElem, string key, object value);
+        protected abstract void AddArrayElement(A targetArray, object value);
 
         protected override void OnParseStart()
         {
@@ -840,7 +838,7 @@ namespace SharpConnect.Es
             {
                 elemStack.Push(currentElem);
             }
-            currentElem = createElement();
+            currentElem = CreateElement();
         }
         void InternalPopCurrentObjectAndPushToPrevContext()
         {
@@ -861,11 +859,11 @@ namespace SharpConnect.Es
                 if ((c_elem = currentElem as E) != null)
                 {
                     currentKey = keyStack.Pop();
-                    addElementAttribute(c_elem, currentKey, c_object);
+                    AddElementAttribute(c_elem, currentKey, c_object);
                 }
                 else if ((c_arr = currentElem as A) != null)
                 {
-                    addArrayElement(c_arr, c_object);
+                    AddArrayElement(c_arr, c_object);
                 }
                 else
                 {
@@ -888,7 +886,7 @@ namespace SharpConnect.Es
             {
                 elemStack.Push(currentElem);
             }
-            currentElem = createArray();
+            currentElem = CreateArray();
         }
         protected override void EndArray()
         {
@@ -948,11 +946,11 @@ namespace SharpConnect.Es
             if ((c_elem = currentElem as E) != null)
             {
                 currentKey = keyStack.Pop();
-                addElementAttribute(c_elem, currentKey, c_object);
+                AddElementAttribute(c_elem, currentKey, c_object);
             }
             else if ((c_arr = currentElem as A) != null)
             {
-                addArrayElement(c_arr, c_object);
+                AddArrayElement(c_arr, c_object);
             }
             else
             {

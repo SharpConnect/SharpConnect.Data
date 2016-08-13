@@ -11,22 +11,22 @@ namespace SharpConnect.Data
         {
             easeDoc = blankdoc;
         }
-        protected override EsElem createElement()
+        protected override EsElem CreateElement()
         {
             return easeDoc.CreateElement();
         }
 
-        protected override EsArr createArray()
+        protected override EsArr CreateArray()
         {
             return easeDoc.CreateArray();
         }
 
-        protected override void addElementAttribute(EsElem targetElem, string key, object value)
+        protected override void AddElementAttribute(EsElem targetElem, string key, object value)
         {
             targetElem[key] = value;
         }
 
-        protected override void addArrayElement(EsArr targetArray, object value)
+        protected override void AddArrayElement(EsArr targetArray, object value)
         {
             targetArray.AddItem(value);
         } 
