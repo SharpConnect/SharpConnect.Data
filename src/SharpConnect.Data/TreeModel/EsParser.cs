@@ -794,5 +794,5 @@ namespace SharpConnect.Data
             uint p4 = ParseSingleChar(c4, 1);
             return p1 + p2 + p3 + p4;
         }
-    } 
+    }
 }

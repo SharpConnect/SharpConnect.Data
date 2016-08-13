@@ -152,7 +152,7 @@ namespace SharpConnect.Data
         }
         protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
         {
-            object value = null;
+            object c_object = null;
             switch (valueHint)
             {
                 default:
@@ -163,29 +163,29 @@ namespace SharpConnect.Data
                     switch (iden)
                     {
                         case "true":
-                            value = true;
+                            c_object = true;
                             break;
                         case "false":
-                            value = false;
+                            c_object = false;
                             break;
                         case "null":
-                            value = null;
+                            c_object = null;
                             break;
                         default:
-                            value = iden;
+                            c_object = iden;
                             break;
                     }
                     break;
                 case ValueHint.StringLiteral:
-                    value = tmpBuffer.ToString();
+                    c_object = tmpBuffer.ToString();
                     break;
                 case ValueHint.IntegerNumber:
-                    value = int.Parse(tmpBuffer.ToString());
+                    c_object = int.Parse(tmpBuffer.ToString());
                     break;
                 case ValueHint.NumberWithFractionPart:
                 case ValueHint.NumberWithSignedExponentialPart:
                 case ValueHint.NumberWithExponentialPart:
-                    value = double.Parse(tmpBuffer.ToString());
+                    c_object = double.Parse(tmpBuffer.ToString());
                     break;
 
             }
@@ -193,11 +193,11 @@ namespace SharpConnect.Data
 
             if (currentElem is EsElem)
             {
-                ((EsElem)currentElem)[currentKey] = value;
+                ((EsElem)currentElem)[currentKey] = c_object;
             }
             else if (currentElem is EsArr)
             {
-                ((EsArr)currentElem).AddItem(value);
+                ((EsArr)currentElem).AddItem(c_object);
             }
             else
             {
