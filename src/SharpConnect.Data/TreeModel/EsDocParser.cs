@@ -35,6 +35,7 @@ namespace SharpConnect.Data
             {
                 keyStack.Push(currentKey);
             }
+            currentKey = null;
             if (currentElem != null)
             {
                 elemStack.Push(currentElem);
@@ -75,6 +76,7 @@ namespace SharpConnect.Data
             {
                 keyStack.Push(currentKey);
             }
+            currentKey = null;
             if (currentElem != null)
             {
                 elemStack.Push(currentElem);
