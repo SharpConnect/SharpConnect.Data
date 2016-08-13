@@ -653,7 +653,7 @@ namespace SharpConnect.Es
                                     default: throw new NotSupportedException();
                                     case EsElementKind.Array:
                                         isInKeyPart = false;
-                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
                                         break;
                                     case EsElementKind.Object:
                                         isInKeyPart = true;
@@ -744,7 +744,7 @@ namespace SharpConnect.Es
                                             default: throw new NotSupportedException();
                                             case EsElementKind.Array:
                                                 isInKeyPart = false;
-                                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
                                                 break;
                                             case EsElementKind.Object:
                                                 isInKeyPart = true;
@@ -898,8 +898,7 @@ namespace SharpConnect.Es
         }
         protected override void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
         {
-            currentKey = tmpBuffer.ToString();
-
+            currentKey = tmpBuffer.ToString(); 
         }
         protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
         {
@@ -945,7 +944,7 @@ namespace SharpConnect.Es
             A c_arr = null;
             if ((c_elem = currentElem as E) != null)
             {
-                currentKey = keyStack.Pop();
+
                 AddElementAttribute(c_elem, currentKey, c_object);
             }
             else if ((c_arr = currentElem as A) != null)
