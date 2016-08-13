@@ -2,136 +2,203 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-namespace SharpConnect.Data
+using System.IO;
+namespace SharpConnect
 {
+
     /// <summary>
-    /// Json-like Parser
+    /// event-driven json-like parser 
     /// </summary>
-    public static class EsParser
+    abstract class EsParserBase
     {
+        enum EsElementKind
+        {
+            Unknown,
+            Object,
+            Array
+        }
+        enum ParsingState
+        {
+            _0_Init,
+            _1_ObjectKey,
+            _2_CollectStringLiteral,
+            _3_StringEscape,
+            _4_FinishKeyPartWaitForSemiColon,
+            _5_ExpectObjectValueOrArrayElement,
+            _6_AfterObjectValueOrArrayElement,
+            _7_CollectNumberLiteral,
+            _8_CollectIdentifier,
+        }
+        enum NumberPart
+        {
+            IntegerPart,
+            FractionPart,
+            E, //e or E
+            ESign,//e and sign
+            ExponentialPart,
+        }
+        protected enum ValueHint
+        {
+            Unknown,
+            StringLiteral,
+            IntegerNumber,
+            NumberWithFractionPart,
+            NumberWithExponentialPart,
+            NumberWithSignedExponentialPart,
+            Identifier,
+            Comment,//extension
+        }
 #if DEBUG
         public static bool dbug_EnableLogParser = false;
         public static int dbug_file_count = 0;
 #endif
 
-        public static EsElem Parse(string jsontext)
+#if DEBUG
+        static EsParserBase()
         {
-            return Parse(jsontext.ToCharArray());
+            if (dbug_EnableLogParser)
+            {
+                dbugDataFormatParser.Init("d:\\WImageTest\\parse_json.txt");
+            }
         }
-        static void NotifyError()
+#endif 
+        protected virtual void BeginObject()
+        {
+            //create new js object 
+            //and set this to current object
+        }
+        protected virtual void EndObject()
+        {
+            //close current jsobject
+        }
+        protected virtual void BeginArray()
+        {
+
+        }
+        protected virtual void EndArray()
+        {
+
+        }
+        protected virtual void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
+        {
+
+        }
+        protected virtual void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
+        {
+
+        }
+        protected virtual void OnError(ref int currentIndex)
+        {
+
+        }
+        protected virtual void OnParseEnd()
+        {
+
+        }
+        protected virtual void OnParseStart()
+        {
+
+        }
+        protected virtual void NotifyError()
         {
         }
-        public static EsElem Parse(char[] sourceBuffer)
+        public virtual void Parse(char[] sourceBuffer)
         {
-            return Parse(sourceBuffer, true);
-        }
-        public static EsElem Parse(char[] sourceBuffer, bool reformat)
-        {
-            //#if DEBUG
-            //            debugDataFormatParserLog dbugDataFormatParser = null;
-            //            if (dbug_EnableLogParser)
-            //            {
-            //                dbugDataFormatParser = new debugDataFormatParserLog();
-            //                dbugDataFormatParser.Begin("json_" + dbug_file_count + " ");
-            //                dbug_file_count++;
-            //                dbugDataFormatParser.WriteLine(new string(sourceBuffer));
+            OnParseStart();
+            //--------------------------------------------------------------
+            EsElementKind currentElementKind = EsElementKind.Unknown;
+            Stack<EsElementKind> elemKindStack = new Stack<EsElementKind>();
+            //--------------------------------------------------------------
 
-            //            }
-            //#endif
-
-
-            Stack<object> myVElemStack = new Stack<object>();
-            Stack<string> myKeyStack = new Stack<string>();
-            object currentObj = null;
             StringBuilder myBuffer = new StringBuilder();
-            string lastestKey = "";
-            int currentState = 0;
+            //string lastestKey = "";
+            ParsingState currentState = ParsingState._0_Init;
             int j = sourceBuffer.Length;
-            bool isDoubleNumber = false;
             bool isSuccess = true;
             bool isInKeyPart = false;
-            EsDoc doc = new EsDoc();
-            if (sourceBuffer == null)
-            {
-                return EsElemHelper.CreateXmlElementForDynamicObject(doc);
-            }
-
-
+            NumberPart numberPart = NumberPart.IntegerPart;
 
             //WARNING: custom version, about ending with comma
             //we may use implicit comma feature, 
             //in case we start new line but forget a comma,
             //we auto add comma 
 
-            bool implicitComma = false;
+            //bool implicitComma = false;
             char openStringWithChar = '"';
             int i = 0;
-            //int hexdigiCount = 0;
-            //char hex00 = '\0';
-            //char hex01 = '\0';
-            //char hex02 = '\0';
-            //char hex03 = '\0';
-
+            ValueHint currentValueHint = ValueHint.Unknown;
             for (i = 0; i < j; i++)
             {
                 if (!isSuccess)
                 {
+
+                    OnError(ref i);
+                    //handle the error ****
                     //#if DEBUG
-                    //                    if (dbug_EnableLogParser)
-                    //                    {
-                    //                        dbugDataFormatParser.IndentLevel = myKeyStack.Count;
-                    //                        dbugDataFormatParser.WriteLine("fail at pos=" + i + " on " + currentState);
-                    //                    }
+                    // if (dbug_EnableLogParser)
+                    // {
+                    //   dbugDataFormatParser.IndentLevel = myKeyStack.Count;
+                    //   dbugDataFormatParser.WriteLine("fail at pos=" + i + " on " + currentState);
+                    // }
                     //#endif
-                    break;
+                    break; //break from loop
                 }
 
                 //--------------------------
                 char c = sourceBuffer[i];
-                //#if DEBUG
-                //                if (dbug_EnableLogParser)
-                //                {
-                //                    dbugDataFormatParser.WriteLine(i + " ," + c.ToString() + "," + currentState);
-                //                }
-                //#endif
-                //-------------------------- 
-
+#if DEBUG
+                if (dbug_EnableLogParser)
+                {
+                    dbugDataFormatParser.WriteLine(new string('\t', elemKindStack.Count) + i + " ," + c.ToString() + "," + currentState);
+                }
+#endif
+                //--------------------------  
                 switch (currentState)
                 {
-                    case 0:
+                    case ParsingState._0_Init:
                         {
-                            if (c == '{')
+                            switch (c)
                             {
-                                currentObj = doc.CreateElement("!j");
-                                currentState = 1;
-                                isInKeyPart = true;
-                                myBuffer.Length = 0;//clear
-                            }
-                            else if (c == '[')
-                            {
-                                currentObj = new EaseArray();
-                                currentState = 5;
-                                isInKeyPart = false;
-                                myBuffer.Length = 0;
-                            }
-                            else if (char.IsWhiteSpace(c))
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                isSuccess = false;
-                                NotifyError();
-                                break;
+                                case '{':
+
+
+                                    BeginObject();
+                                    //change current element kind after notification
+                                    elemKindStack.Push(currentElementKind);
+                                    currentElementKind = EsElementKind.Object;
+
+                                    myBuffer.Length = 0;//clear
+                                    isInKeyPart = true;
+                                    currentState = ParsingState._1_ObjectKey;
+                                    break;
+                                default:
+                                    {
+                                        if (char.IsWhiteSpace(c))
+                                        {
+                                            //same state
+                                            continue;
+                                        }
+                                        else
+                                        {
+                                            isSuccess = false;
+                                            NotifyError();
+                                        }
+                                    }
+                                    break;
                             }
                         }
                         break;
-                    case 1:
+                    case ParsingState._1_ObjectKey:
                         {
+                            //TODO: review here again
+                            //in json spec, not support '\"' in keypart
+
                             if (c == '"' || c == '\'')
                             {
+                                //**                                
                                 openStringWithChar = c;
-                                currentState = 2;
+                                currentValueHint = ValueHint.StringLiteral;
+                                currentState = ParsingState._2_CollectStringLiteral;
                             }
                             else if (char.IsWhiteSpace(c))
                             {
@@ -139,90 +206,73 @@ namespace SharpConnect.Data
                             }
                             else if (c == '}')
                             {
-                                if (currentObj is EsElem)
-                                {
-                                    if (myVElemStack.Count > 0)
-                                    {
-                                        object velem = myVElemStack.Pop();
-                                        if (velem is EsElem)
-                                        {
-                                            lastestKey = myKeyStack.Pop();
-                                            AddVElement((EsElem)velem, lastestKey, currentObj);
-                                            currentObj = velem;
-                                        }
-                                        else if (velem is EsArr)
-                                        {
-                                            AddVElement((EsArr)velem, currentObj);
-                                            currentObj = velem;
-                                            currentState = 7;
-                                            isInKeyPart = false;
-                                        }
-                                    }
-                                }
-                                else
+                                //this is empty 
+                                if (currentElementKind != EsElementKind.Object)
                                 {
                                     NotifyError();
                                     isSuccess = false;
                                 }
+                                else
+                                {
+                                    if (myBuffer.Length > 0)
+                                    {
+                                        //error at this state
+                                    }
+                                    isInKeyPart = false;
+                                    EndObject();//end current object 
+                                    //1. close current object
+                                    //2. pop current object and  switch back 
+                                    //to prev state ***
+                                    if (elemKindStack.Count > 0)
+                                    {
+                                        //switch back      
+                                        currentElementKind = elemKindStack.Pop();
+                                    }
+                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                }
                             }
                             else if (char.IsLetter(c) || c == '_')
                             {
-                                myBuffer.Append(c);
-                                currentState = 9;
+                                currentValueHint = ValueHint.Identifier;
+                                myBuffer.Append(c); //collect identifier
+                                currentState = ParsingState._8_CollectIdentifier; //collect identifier
                             }
                             else
                             {
+                                //extension***
+                                //
+
+                                //number or other token will error in keypart***
                                 NotifyError();
                                 isSuccess = false;
                                 break;
                             }
                         }
                         break;
-                    case 2:
+                    case ParsingState._2_CollectStringLiteral:
                         {
+                            //collecting string 
                             if (c == '\\')
                             {
-                                currentState = 3;
+                                currentState = ParsingState._3_StringEscape;
                             }
                             else if (c == openStringWithChar)
                             {
+                                //close current string collection
+                                currentValueHint = ValueHint.StringLiteral;
+
                                 if (isInKeyPart)
                                 {
-                                    lastestKey = myBuffer.ToString();
-                                    currentState = 4;
+                                    NewKey(myBuffer, currentValueHint);
                                     myBuffer.Length = 0;//clear
+                                    currentState = ParsingState._4_FinishKeyPartWaitForSemiColon;
                                 }
                                 else
                                 {
-                                    if (currentObj is EsArr)
-                                    {
-                                        object velem = GetVElement(myBuffer, 0);
-                                        if (velem != null)
-                                        {
-                                            AddVElement((EsArr)currentObj, velem);
-                                            currentState = 7;
-                                        }
-                                        else
-                                        {
-                                            NotifyError();
-                                            isSuccess = false;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        object velem = GetVElement(myBuffer, 0);
-                                        if (velem != null)
-                                        {
-                                            AddVElement((EsElem)currentObj, lastestKey, velem);
-                                            currentState = 7;
-                                        }
-                                        else
-                                        {
-                                            NotifyError();
-                                            isSuccess = false;
-                                        }
-                                    }
+                                    NewValue(myBuffer, currentValueHint);
                                     myBuffer.Length = 0;//clear
+                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+
                                 }
                             }
                             else
@@ -231,7 +281,7 @@ namespace SharpConnect.Data
                             }
                         }
                         break;
-                    case 3:
+                    case ParsingState._3_StringEscape:
                         {
                             switch (c)
                             {
@@ -283,10 +333,26 @@ namespace SharpConnect.Data
                                 case 'u':
                                     {
                                         //unicode char in hexa digit
-                                        uint c_uint = ParseUnicode(sourceBuffer[i + 1], sourceBuffer[i + 2], sourceBuffer[i + 3], sourceBuffer[i + 4]);
-                                        myBuffer.Append((char)c_uint);
-                                        i += 4;
-                                        isSuccess = true;
+                                        //TODO: review here if we have enough char to parse ***
+                                        if (i < j - 4)
+                                        {
+                                            //json spec
+                                            //this follow by  4 chars
+                                            //for extension we check if it match with 4 chars or not 
+                                            uint c_uint = ParseUnicode(
+                                             sourceBuffer[i + 1],
+                                             sourceBuffer[i + 2],
+                                             sourceBuffer[i + 3],
+                                             sourceBuffer[i + 4]);
+                                            myBuffer.Append((char)c_uint);
+                                            i += 4;
+                                        }
+                                        else
+                                        {
+                                            //error
+                                            isSuccess = false;
+                                            NotifyError();
+                                        }
                                     }
                                     break;
                                 default:
@@ -296,22 +362,18 @@ namespace SharpConnect.Data
                                     }
                                     break;
                             }
-                            if (isSuccess)
-                            {
-                                currentState = 2;
-                            }
-                            else
-                            {
-                                break;
-                            }
+                            //switch back to state 2_collectStringLiteral
+                            currentState = ParsingState._2_CollectStringLiteral;
                         }
                         break;
-                    case 4:
+                    case ParsingState._4_FinishKeyPartWaitForSemiColon:
                         {
+                            //wait for :
                             if (c == ':')
                             {
-                                currentState = 5;
+                                myBuffer.Length = 0;//clear
                                 isInKeyPart = false;
+                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //object's value part                                
                             }
                             else if (char.IsWhiteSpace(c))
                             {
@@ -319,235 +381,201 @@ namespace SharpConnect.Data
                             }
                             else
                             {
+                                //TODO: add recovery extension here
                                 NotifyError();
                                 isSuccess = false;
                                 break;
                             }
                         }
                         break;
-                    case 5:
+                    case ParsingState._5_ExpectObjectValueOrArrayElement:
                         {
+                            //in value part *** 
+                            //of object or array 
+
                             if (c == '"' || c == '\'')
                             {
+                                //TODO: string escape here
                                 openStringWithChar = c;
-                                currentState = 2;
+                                //string val
+                                currentState = ParsingState._2_CollectStringLiteral;
                             }
-                            else if (char.IsDigit(c) || c == '-')
+                            else if (char.IsDigit(c) || (c == '-'))
                             {
+                                //TODO:
+                                //support extension + 
                                 myBuffer.Append(c);
-                                currentState = 8;
+                                //number
+                                currentValueHint = ValueHint.IntegerNumber;
+                                numberPart = NumberPart.IntegerPart;
+                                currentState = ParsingState._7_CollectNumberLiteral;
                             }
                             else if (c == '{')
                             {
-                                myVElemStack.Push(currentObj);
-                                if (currentObj is EsElem)
-                                {
-                                    myKeyStack.Push(lastestKey);
-                                }
-
-                                currentObj = doc.CreateElement("!j");
-                                currentState = 1;
+                                //store current object in stack
+                                BeginObject();
+                                elemKindStack.Push(currentElementKind);
+                                currentElementKind = EsElementKind.Object;
                                 isInKeyPart = true;
+                                currentState = ParsingState._1_ObjectKey;
                             }
                             else if (c == '[')
                             {
-                                myVElemStack.Push(currentObj);
-                                if (currentObj is EsElem)
-                                {
-                                    myKeyStack.Push(lastestKey);
-                                }
-
-                                currentObj = new EaseArray();
-                                currentState = 5;
+                                BeginArray();
+                                elemKindStack.Push(currentElementKind);
+                                currentElementKind = EsElementKind.Array;
                                 isInKeyPart = false;
+                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //on the same state -- value state
                             }
                             else if (c == ']')
                             {
-                                if (currentObj is EsArr)
-                                {
-                                    if (myVElemStack.Count > 0)
-                                    {
-                                        object velem = myVElemStack.Pop();
-                                        if (velem is EsElem)
-                                        {
-                                            lastestKey = myKeyStack.Pop();
-                                            AddVElement((EsElem)velem, lastestKey, currentObj);
-                                            currentObj = velem;
-                                            currentState = 7;
-                                        }
-                                        else
-                                        {
-                                            AddVElement((EsArr)velem, currentObj);
-                                            currentObj = velem;
-                                        }
-                                    }
-                                }
-                                else
+                                if (currentElementKind != EsElementKind.Array)
                                 {
                                     NotifyError();
                                     isSuccess = false;
                                 }
+                                else
+                                {
+                                    EndArray();//end current array
+
+                                    if (elemKindStack.Count > 0)
+                                    {
+
+                                        currentElementKind = elemKindStack.Pop();
+                                    }
+                                }
+                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
                             }
                             else if (char.IsWhiteSpace(c))
                             {
                                 continue;
                             }
-                            else if (c == 'n' || c == 't' || c == 'f')
-                            {
-                                currentState = 6;
-                                myBuffer.Append(c);
-                            }
                             else
                             {
-                                NotifyError();
-                                isSuccess = false;
-                                break;
+                                //we collect other character into buffer
+                                //so we can collect 
+                                //null, true, false
+                                //or other identifier  ***
+                                currentState = ParsingState._8_CollectIdentifier;
+                                myBuffer.Append(c);
                             }
                         }
                         break;
-                    case 6:
+                    case ParsingState._6_AfterObjectValueOrArrayElement:
                         {
-                            if (char.IsLetter(c))
+                            switch (c)
                             {
-                                myBuffer.Append(c);
-                            }
-                            else if (c == ']' || c == '}' || c == ',')
-                            {
-                                if (myBuffer.Length > 0)
-                                {
-                                    if (!EvaluateElement(currentObj, myBuffer, 3, c, lastestKey))
+                                case ',':
+                                    switch (currentElementKind)
                                     {
-                                        NotifyError();
-                                        isSuccess = false;
-                                        break;
-                                    }
-                                }
-
-                                if (c == ']')
-                                {
-                                    if (myVElemStack.Count > 0)
-                                    {
-                                        currentObj = myVElemStack.Pop();
-                                    }
-                                }
-                                else if (c == '}')
-                                {
-                                    if (myVElemStack.Count > 0)
-                                    {
-                                        currentObj = myVElemStack.Pop();
-                                        lastestKey = myKeyStack.Pop();
-                                    }
-                                }
-                                else
-                                {
-                                    if (currentObj is EsElem)
-                                    {
-                                        currentState = 1;
-                                        isInKeyPart = true;
-                                    }
-                                    else if (currentObj is EsArr)
-                                    {
-                                        currentState = 5;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                NotifyError();
-                                isSuccess = false;
-                            }
-                        }
-                        break;
-                    case 7:
-                        {
-                            if (c == ',')
-                            {
-                                if (currentObj is EsElem)
-                                {
-                                    currentState = 1;
-                                    isInKeyPart = true;
-                                }
-                                else
-                                {
-                                    currentState = 5;
-                                }
-                            }
-                            else if (c == ']')
-                            {
-                                if (myVElemStack.Count > 0)
-                                {
-                                    object velem = myVElemStack.Pop();
-                                    if (velem is EsElem)
-                                    {
-                                        lastestKey = myKeyStack.Pop();
-                                        AddVElement((EsElem)velem, lastestKey, currentObj);
-                                        currentObj = velem;
-                                    }
-                                    else
-                                    {
-                                        AddVElement((EsArr)velem, currentObj);
-                                        currentObj = velem;
-                                    }
-                                }
-                            }
-                            else if (c == '}')
-                            {
-                                if (myVElemStack.Count > 0)
-                                {
-                                    object velem = myVElemStack.Pop();
-                                    if (velem is EsElem)
-                                    {
-                                        lastestKey = myKeyStack.Pop();
-                                        AddVElement((EsElem)velem, lastestKey, currentObj);
-                                        currentObj = velem;
-                                    }
-                                    else
-                                    {
-                                        AddVElement((EsArr)velem, currentObj);
-                                        currentObj = velem;
-                                    }
-                                }
-                            }
-                            else if (c == '\r' || c == '\n')
-                            {
-                                //WARNING: review implivit comma
-                                implicitComma = true;
-                            }
-                            else
-                            {
-                                //WARNING: review implivit comma
-                                if (char.IsLetter(c) || c == '_' || c == '"')
-                                {
-                                    if (implicitComma)
-                                    {
-                                        if (currentObj is EsElem)
-                                        {
-                                            currentState = 1;
+                                        default: throw new NotSupportedException();
+                                        case EsElementKind.Object:
+                                            currentState = ParsingState._1_ObjectKey;
                                             isInKeyPart = true;
-                                        }
-                                        else
-                                        {
-                                            currentState = 5;
-                                        }
-                                        i--;
-                                        implicitComma = false;
+                                            break;
+                                        case EsElementKind.Array:
+                                            //array
+                                            currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+                                            break;
                                     }
-                                }
+                                    break;
+                                case ']':
+                                    if (currentElementKind != EsElementKind.Array)
+                                    {
+                                        //error
+                                        throw new NotSupportedException();
+                                    }
+                                    EndArray();
+
+                                    //close current array
+                                    //then push value back to prev stored value
+                                    if (elemKindStack.Count > 0)
+                                    {
+
+                                        //current value must be array
+                                        currentElementKind = elemKindStack.Pop();
+                                    }
+                                    break;
+                                case '}':
+
+                                    if (currentElementKind != EsElementKind.Object)
+                                    {
+                                        //error
+                                        throw new NotSupportedException();
+                                    }
+                                    EndObject();
+
+                                    if (elemKindStack.Count > 0)
+                                    {
+                                        currentElementKind = elemKindStack.Pop();
+                                    }
+                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                    break;
+                                default:
+                                    //?
+                                    //TODO: error recovery / or handle error with some extension 
+                                    break;
                             }
+
+                            //else if (c == '\r' || c == '\n')
+                            //{
+                            //    //WARNING: review implicit comma
+                            //    //check if we enable this option  or not
+                            //    //if not -> this will error
+                            //    implicitComma = true;
+                            //}
+                            //else
+                            //{
+                            //    //WARNING: review implicit comma
+                            //    if (char.IsLetter(c) || c == '_' || c == '"')
+                            //    {
+                            //        if (implicitComma)
+                            //        {
+                            //            if (currentElementKind == EsElementKind.Object)
+                            //            {
+                            //                currentState = ParsingState._1_ObjectKey;
+                            //                isInKeyPart = true;
+
+                            //            }
+                            //            else
+                            //            {
+                            //                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+                            //            }
+                            //            i--;
+                            //            implicitComma = false;
+                            //        }
+                            //        else
+                            //        {
+                            //            //?
+                            //        }
+                            //    }
+                            //    else
+                            //    {
+                            //        //eg. whitespace
+                            //        //?
+                            //    }
+                            //}
                         }
                         break;
-                    case 8:
+                    case ParsingState._7_CollectNumberLiteral:
                         {
+                            //------------------------------------------------------
+                            //TODO: review pass sign state of number literal
+                            //check if we support hex liternal or binary literal
+                            //this is extension to normal json ***
+                            //------------------------------------------------------ 
+
                             if (char.IsDigit(c))
                             {
                                 myBuffer.Append(c);
                             }
                             else if (c == '.')
                             {
-                                if (!isDoubleNumber)
+                                if (numberPart == NumberPart.IntegerPart)
                                 {
                                     myBuffer.Append(c);
-                                    isDoubleNumber = true;
+                                    numberPart = NumberPart.FractionPart;
+                                    currentValueHint = ValueHint.NumberWithFractionPart;
                                 }
                                 else
                                 {
@@ -556,151 +584,209 @@ namespace SharpConnect.Data
                                     break;
                                 }
                             }
-
-                            else if (c == ']' || c == '}' || c == ',')
+                            else if (c == 'e' || c == 'E')
                             {
-                                int suggestedType = 1;
-                                if (isDoubleNumber)
+                                myBuffer.Append(c);
+                                switch (numberPart)
                                 {
-                                    suggestedType = 2;
-                                    isDoubleNumber = false;
-                                }
-                                if (myBuffer.Length > 0)
-                                {
-                                    if (!EvaluateElement(currentObj, myBuffer, suggestedType, c, lastestKey))
-                                    {
+                                    case NumberPart.IntegerPart:
+                                        numberPart = NumberPart.E;
+                                        currentValueHint = ValueHint.NumberWithExponentialPart;
+                                        break;
+                                    case NumberPart.FractionPart:
+                                        numberPart = NumberPart.E;
+                                        currentValueHint = ValueHint.NumberWithExponentialPart;
+                                        break;
+                                    default:
                                         NotifyError();
                                         isSuccess = false;
                                         break;
-                                    }
-                                }
-                                if (c == ']')
-                                {
-                                    if (myVElemStack.Count > 0)
-                                    {
-                                        object velem = myVElemStack.Pop();
-                                        if (velem is EsElem)
-                                        {
-                                            lastestKey = myKeyStack.Pop();
-                                            AddVElement((EsElem)velem, lastestKey, currentObj);
-                                            currentObj = velem;
-                                        }
-                                        else
-                                        {
-                                            AddVElement((EsArr)velem, currentObj);
-                                            currentObj = velem;
-                                        }
-                                    }
-                                }
-                                else if (c == '}')
-                                {
-                                    if (myVElemStack.Count > 0)
-                                    {
-                                        object velem = myVElemStack.Pop();
-                                        if (velem is EsElem)
-                                        {
-                                            lastestKey = myKeyStack.Pop();
-                                            AddVElement((EsElem)velem, lastestKey, currentObj);
-                                            currentObj = velem;
-                                        }
-                                        else
-                                        {
-                                            AddVElement((EsArr)velem, currentObj);
-                                            currentObj = velem;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    if (currentObj is EsElem)
-                                    {
-                                        currentState = 1;
-                                        isInKeyPart = true;
-                                    }
-                                    else if (currentObj is EsArr)
-                                    {
-                                        currentState = 5;
-                                    }
                                 }
                             }
-                            else
-                            {
-                                NotifyError();
-                                isSuccess = false;
-                            }
-                        }
-                        break;
-                    case 9:
-                        {
-                            if (char.IsLetter(c) || c == '_')
+                            else if (c == '-' || c == '+')
                             {
                                 myBuffer.Append(c);
-                            }
-                            else if (c == ':')
-                            {
-                                if (isInKeyPart)
+                                switch (numberPart)
                                 {
-                                    lastestKey = myBuffer.ToString();
-                                    myBuffer.Length = 0;//clear
-                                    currentState = 5;
-                                    isInKeyPart = false;
-                                }
-                                else
-                                {
-                                    NotifyError();
-                                    isSuccess = false;
+                                    case NumberPart.E://after e
+                                        numberPart = NumberPart.ESign;
+                                        break;
+                                    default:
+                                        NotifyError();
+                                        isSuccess = false;
+                                        break;
                                 }
                             }
-                            else if (char.IsWhiteSpace(c))
+                            else if (c == ']')
                             {
-                                currentState = 4;
+                                NewValue(myBuffer, currentValueHint);
+                                //--------------------------
+                                myBuffer.Length = 0; //clear 
+                                EndArray();
+
+                                if (elemKindStack.Count > 0)
+                                {
+
+                                    currentElementKind = elemKindStack.Pop();
+                                }
+                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                            }
+                            else if (c == '}')
+                            {
+                                NewValue(myBuffer, currentValueHint);
+                                myBuffer.Length = 0; //clear
+                                EndObject();
+
+                                if (elemKindStack.Count > 0)
+                                {
+                                    currentElementKind = elemKindStack.Pop();
+                                }
+                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                            }
+                            else if (c == ',')
+                            {
+                                NewValue(myBuffer, currentValueHint);
+                                //clear
+                                myBuffer.Length = 0;
+                                switch (currentElementKind)
+                                {
+                                    default: throw new NotSupportedException();
+                                    case EsElementKind.Array:
+                                        isInKeyPart = false;
+                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                        break;
+                                    case EsElementKind.Object:
+                                        isInKeyPart = true;
+                                        currentState = ParsingState._1_ObjectKey;
+                                        break;
+                                }
                             }
                             else
                             {
-                                NotifyError();
+
                                 isSuccess = false;
+                                NotifyError();
+                            }
+                        }
+                        break;
+                    case ParsingState._8_CollectIdentifier:
+                        {
+
+                            currentValueHint = ValueHint.Identifier;
+                            switch (c)
+                            {
+                                case ':':
+                                    //stop collect identifier and  
+                                    if (isInKeyPart)
+                                    {
+                                        NewKey(myBuffer, currentValueHint);
+                                        myBuffer.Length = 0;//clear
+                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //object's value part
+                                        isInKeyPart = false;
+                                    }
+                                    else
+                                    {
+                                        NotifyError();
+                                        isSuccess = false;
+                                    }
+                                    break;
+                                case '}':
+                                    if (isInKeyPart)
+                                    {
+                                        NotifyError();
+                                        isSuccess = false;
+                                    }
+                                    else
+                                    {
+                                        NewValue(myBuffer, currentValueHint);
+                                        myBuffer.Length = 0; //clear 
+                                        EndObject();
+
+                                        if (elemKindStack.Count > 0)
+                                        {
+                                            currentElementKind = elemKindStack.Pop();
+                                        }
+                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                    }
+                                    break;
+                                case ']':
+                                    if (isInKeyPart)
+                                    {
+                                        NotifyError();
+                                        isSuccess = false;
+                                    }
+                                    else
+                                    {
+                                        NewValue(myBuffer, currentValueHint);
+                                        myBuffer.Length = 0; //clear 
+                                        EndArray();
+
+                                        if (elemKindStack.Count > 0)
+                                        {
+
+                                            currentElementKind = elemKindStack.Pop();
+                                        }
+                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                    }
+                                    break;
+                                case ',':
+                                    if (isInKeyPart)
+                                    {
+                                        NotifyError();
+                                        isSuccess = false;
+                                    }
+                                    else
+                                    {
+                                        NewValue(myBuffer, currentValueHint);
+                                        myBuffer.Length = 0; //clear 
+                                        switch (currentElementKind)
+                                        {
+                                            default: throw new NotSupportedException();
+                                            case EsElementKind.Array:
+                                                isInKeyPart = false;
+                                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                                break;
+                                            case EsElementKind.Object:
+                                                isInKeyPart = true;
+                                                currentState = ParsingState._1_ObjectKey;
+                                                break;
+                                        }
+                                    }
+                                    break;
+                                default:
+
+                                    if (char.IsWhiteSpace(c))
+                                    {
+                                        //stop collect identifier***
+                                        //wait for :                                
+                                        currentState = ParsingState._4_FinishKeyPartWaitForSemiColon;
+                                    }
+                                    else
+                                    {
+                                        myBuffer.Append(c);
+                                    }
+                                    break;
                             }
                         }
                         break;
                 }
             }
 
-            //=======================================
-#if DEBUG
-            //if (dbug_EnableLogParser)
-            //{
-            //    dbugDataFormatParser.End();
-            //}
-#endif
-            //======================================= 
+            OnParseEnd();
 
-            if (currentObj is EsElem && isSuccess)
-            {
-                //WARNNIG: reformat is our extension
-                if (reformat)
-                {
-                    ReFormatEsElement((EsElem)currentObj);
-                }
-                return (EsElem)currentObj;
-            }
-            else
-            {
-                return null;
-            }
         }
-        private static uint ParseSingleChar(char c1, uint multipliyer)
+        static uint ParseSingleChar(char c1, uint multipliyer)
         {
-            uint p1 = 0;
             if (c1 >= '0' && c1 <= '9')
-                p1 = (uint)(c1 - '0') * multipliyer;
+                return ((uint)(c1 - '0') * multipliyer);
             else if (c1 >= 'A' && c1 <= 'F')
-                p1 = (uint)((c1 - 'A') + 10) * multipliyer;
+                return ((uint)((c1 - 'A') + 10) * multipliyer);
             else if (c1 >= 'a' && c1 <= 'f')
-                p1 = (uint)((c1 - 'a') + 10) * multipliyer;
-            return p1;
+                return ((uint)((c1 - 'a') + 10) * multipliyer);
+            else
+                return 0;
         }
-
-        private static uint ParseUnicode(char c1, char c2, char c3, char c4)
+        static uint ParseUnicode(char c1, char c2, char c3, char c4)
         {
             uint p1 = ParseSingleChar(c1, 0x1000);
             uint p2 = ParseSingleChar(c2, 0x100);
@@ -708,167 +794,37 @@ namespace SharpConnect.Data
             uint p4 = ParseSingleChar(c4, 1);
             return p1 + p2 + p3 + p4;
         }
-        /// <summary>
-        /// convert json to es element
-        /// </summary>
-        /// <param name="element"></param>
-        static void ReFormatEsElement(EsElem element)
-        {
-            EsAttr childNodeAttr = null;
-            EsAttr nodeNameAttr = null;
-            if (!element.HasOwnerDocument)
-            {
-                return;
-            }
-            EsDoc ownerdoc = element.OwnerDocument;
-            int found_N = element.OwnerDocument.GetStringIndex("!n");
-            int found_C = element.OwnerDocument.GetStringIndex("!c");
-            foreach (EsAttr att in element.GetAttributeIterForward())
-            {
-                if (found_N != 0 && att.AttributeLocalNameIndex == found_N) //!n
-                {
-                    element.Name = att.Value.ToString();
-                    nodeNameAttr = att;
-                }
-                else if (found_C != 0 && att.AttributeLocalNameIndex == found_C)
-                {
-                    childNodeAttr = att;
-                }
-            }
-            //--------------------------------------
-            if (nodeNameAttr != null)
-            {
-                element.RemoveAttribute(nodeNameAttr);
-            }
-            //--------------------------------------
-
-            if (childNodeAttr != null)
-            {
-                if (childNodeAttr.Value is EsArr)
-                {
-                    EsArr children = (EsArr)childNodeAttr.Value;
-                    foreach (object child in children.GetIterForward())
-                    {
-                        if (child is EsElem)
-                        {
-                            ReFormatEsElement((EsElem)child);
-                            element.AppendChild((EsElem)child);
-                        }
-                        else
-                        {
-                            throw new NotSupportedException();
-                        }
-                    }
-
-                    children.Clear();
-                    element.RemoveAttribute(childNodeAttr);
-                }
-            }
-        }
-
-        static bool EvaluateElement(object currentObj, StringBuilder myBuffer, int suggestedType, char terminateChar, string lastestKey)
-        {
-            if (terminateChar == ']')
-            {
-                object elem = GetVElement(myBuffer, suggestedType);
-                if (currentObj is EsArr)
-                {
-                    AddVElement((EsArr)currentObj, elem);
-                    myBuffer.Length = 0;
-                    return true;
-                }
-            }
-            else if (terminateChar == '}')
-            {
-                object elem = GetVElement(myBuffer, suggestedType);
-                if (currentObj is EsElem)
-                {
-                    AddVElement((EsElem)currentObj, lastestKey, elem);
-                    myBuffer.Length = 0;
-                    return true;
-                }
-            }
-            else if (terminateChar == ',')
-            {
-                object elem = GetVElement(myBuffer, suggestedType);
-                if (elem != null)
-                {
-                    if (currentObj is EsElem)
-                    {
-                        AddVElement((EsElem)currentObj, lastestKey, elem);
-                        myBuffer.Length = 0;
-                        return true;
-                    }
-                    else if (currentObj is EsArr)
-                    {
-                        AddVElement((EsArr)currentObj, elem);
-                        myBuffer.Length = 0;
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-        static object GetVElement(StringBuilder myBuffer, int suggestedType)
-        {
-            switch (suggestedType)
-            {
-                case 0:
-                    {
-                        return myBuffer.ToString();
-                    }
-                case 1://int
-                    {
-                        int intNumber = 0;
-                        try
-                        {
-                            return Convert.ToInt32(myBuffer.ToString());
-                        }
-                        catch
-                        {
-                            return null;
-                        }
-                    }
-                case 2://double
-                    {
-                        double doubleNumber = 0;
-                        try
-                        {
-                            return Convert.ToDouble(myBuffer.ToString());
-                        }
-                        catch
-                        {
-                            return null;
-                        }
-                    }
-                case 3:
-                    {
-                        string myvalue = myBuffer.ToString();
-                        if (myvalue == "true")
-                        {
-                            return true;
-                        }
-                        else if (myvalue == "false")
-                        {
-                            return false;
-                        }
-                        else if (myvalue == "null")
-                        {
-                            return null;
-                        }
-                    }
-                    break;
-            }
-            return null;
-        }
-        static void AddVElement(EsArr dArray, object velemt)
-        {
-            dArray.AddItem(velemt);
-        }
-        static void AddVElement(EsElem dObj, string key, object velemt)
-        {
-            dObj.AppendAttribute(key, velemt);
-        }
     }
+
+
+#if DEBUG
+    static class dbugDataFormatParser
+    {
+        static FileStream dbugFs;
+        static StreamWriter writer;
+        public static void Init(string outputfile)
+        {
+            if (writer != null)
+            {
+                writer.Close();
+                writer.Dispose();
+                writer = null;
+            }
+            if (dbugFs != null)
+            {
+                dbugFs.Close();
+                dbugFs = null;
+            }
+            //-------------------------
+            dbugFs = new FileStream(outputfile, FileMode.Create);
+            writer = new StreamWriter(dbugFs);
+            writer.AutoFlush = true;
+        }
+        public static void WriteLine(string text)
+        {
+            writer.WriteLine(text);
+        }
+
+    }
+#endif
 }

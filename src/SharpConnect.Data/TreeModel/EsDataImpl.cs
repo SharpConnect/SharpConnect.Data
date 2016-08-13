@@ -5,6 +5,221 @@ using System.Collections.Generic;
 using System.Text;
 namespace SharpConnect.Data
 {
+    public class EaseDocument : EsDoc
+    {
+        Dictionary<string, int> stringTable = new Dictionary<string, int>();
+        public EaseDocument()
+        {
+
+        }
+        public EsElem CreateElement(string elementName)
+        {
+            return new EaseElement(elementName, this);
+        }
+        public EsElem CreateElement()
+        {
+            return new EaseElement("", this);
+        }
+        public EsArr CreateArray()
+        {
+            return new EaseArray();
+        }
+        public int GetStringIndex(string str)
+        {
+            int found;
+            stringTable.TryGetValue(str, out found);
+            return found;
+        }
+        public EsElem DocumentElement
+        {
+            get;
+            set;
+        }
+        public EsElem Parse(string jsonstr)
+        {
+            char[] buffer = jsonstr.ToCharArray();
+            return Parse(buffer);         
+        }
+        public EsElem Parse(char[] jsonstr)
+        {
+            var parser = new EaseDocParser(this);
+            parser.Parse(jsonstr);
+            return parser.CurrentElement as EsElem;
+        }
+    }
+
+    class EaseDocParser : EsParserBase
+    {
+        enum CurrentObject
+        {
+            Object,
+            Array
+        }
+
+        EaseDocument easeDoc;
+        Stack<string> keyStack = new Stack<string>();
+        Stack<object> elemStack = new Stack<object>();
+        object currentElem = null;
+        string currentKey = null;
+        public EaseDocParser(EaseDocument blankdoc)
+        {
+            easeDoc = blankdoc;
+        }
+        protected override void OnParseStart()
+        {
+            if (easeDoc == null)
+            {
+                easeDoc = new EaseDocument();
+            }
+        }
+        protected override void BeginObject()
+        {
+            if (currentElem != null)
+            {
+                elemStack.Push(currentElem);
+            }
+            currentElem = easeDoc.CreateElement();
+        }
+        protected override void EndObject()
+        {
+            //current element should be object
+            object c_object = currentElem;
+            if (elemStack.Count > 0)
+            {
+                //pop from stack
+                currentElem = elemStack.Pop();
+
+                if (c_object == currentElem)
+                {
+                    throw new System.Exception();
+                }
+                if (currentElem is EsElem)
+                {
+                    ((EsElem)currentElem)[currentKey] = c_object;
+                }
+                else if (currentElem is EsArr)
+                {
+                    ((EsArr)currentElem).AddItem(c_object);
+                }
+                else
+                {
+                    throw new System.NotSupportedException();
+                }
+            }
+        }
+        protected override void BeginArray()
+        {
+            if (currentElem != null)
+            {
+                elemStack.Push(currentElem);
+            }
+            currentElem = easeDoc.CreateArray();
+        }
+        protected override void EndArray()
+        {
+            object c_object = currentElem;
+            if (elemStack.Count > 0)
+            {
+                //pop from stack
+                currentElem = elemStack.Pop();
+
+                if (c_object == currentElem)
+                {
+                    throw new System.Exception();
+                }
+                if (currentElem is EsElem)
+                {
+                    ((EsElem)currentElem)[currentKey] = c_object;
+                }
+                else if (currentElem is EsArr)
+                {
+                    ((EsArr)currentElem).AddItem(c_object);
+                }
+                else
+                {
+                    throw new System.NotSupportedException();
+                }
+            }
+        }
+        protected override void OnParseEnd()
+        {
+
+        }
+        protected override void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
+        {
+            //add key to current object
+            currentKey = tmpBuffer.ToString();
+        }
+        protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
+        {
+            object value = null;
+            switch (valueHint)
+            {
+                default:
+                case ValueHint.Comment:
+                    throw new System.NotSupportedException();
+                case ValueHint.Identifier:
+                    string iden = tmpBuffer.ToString();
+                    switch (iden)
+                    {
+                        case "true":
+                            value = true;
+                            break;
+                        case "false":
+                            value = false;
+                            break;
+                        case "null":
+                            value = null;
+                            break;
+                        default:
+                            value = iden;
+                            break;
+                    }
+                    break;
+                case ValueHint.StringLiteral:
+                    value = tmpBuffer.ToString();
+                    break;
+                case ValueHint.IntegerNumber:
+                    value = int.Parse(tmpBuffer.ToString());
+                    break;
+                case ValueHint.NumberWithFractionPart:
+                case ValueHint.NumberWithSignedExponentialPart:
+                case ValueHint.NumberWithExponentialPart:
+                    value = double.Parse(tmpBuffer.ToString());
+                    break;
+
+            }
+
+
+            if (currentElem is EsElem)
+            {
+                ((EsElem)currentElem)[currentKey] = value;
+            }
+            else if (currentElem is EsArr)
+            {
+                ((EsArr)currentElem).AddItem(value);
+            }
+            else
+            {
+                throw new System.NotSupportedException();
+            }
+        }
+        protected override void NotifyError()
+        {
+            base.NotifyError();
+        }
+        protected override void OnError(ref int currentIndex)
+        {
+            base.OnError(ref currentIndex);
+        }
+        public object CurrentElement { get { return currentElem; } }
+    }
+
+
+
+
+
+
     class EaseArray : List<object>, EsArr
     {
         public void AddItem(object item)
