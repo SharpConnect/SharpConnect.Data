@@ -77,6 +77,7 @@
     <Compile Include="TableModel\EsColumnBasedTable.cs" />
     <Compile Include="TableModel\EsColumnBasedTableHelper.cs" />
     <Compile Include="TreeModel\BasicReflectiveStructs.cs" />
+    <Compile Include="TreeModel\EsDocParser.cs" />
     <Compile Include="TreeModel\EsParserLogger.cs" />
     <Compile Include="TreeModel\EsDataInterface.cs" />
     <Compile Include="TreeModel\EsDataImpl.cs" />
