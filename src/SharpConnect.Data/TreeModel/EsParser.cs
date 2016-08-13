@@ -3,13 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SharpConnect.Data
+namespace SharpConnect.Es
 {
 
     /// <summary>
     /// event-driven json-like parser 
     /// </summary>
-    abstract class EsParserBase
+    public abstract class EsParserBase
     {
         enum EsElementKind
         {
@@ -794,5 +794,180 @@ namespace SharpConnect.Data
             uint p4 = ParseSingleChar(c4, 1);
             return p1 + p2 + p3 + p4;
         }
+    }
+
+
+
+    public abstract class EsParserBase<E, A> : EsParserBase
+        where E : class
+        where A : class
+    {
+        enum CurrentObject
+        {
+            Object,
+            Array
+        }
+
+        Stack<string> keyStack = new Stack<string>();
+        Stack<object> elemStack = new Stack<object>();
+        object currentElem = null;
+        string currentKey = null;
+
+
+
+
+        public EsParserBase()
+        {
+
+        }
+        protected abstract E createElement();
+        protected abstract A createArray();
+        protected abstract void addElementAttribute(E targetElem, string key, object value);
+        protected abstract void addArrayElement(A targetArray, object value);
+
+        protected override void OnParseStart()
+        {
+
+        }
+        protected override void BeginObject()
+        {
+            if (currentKey != null)
+            {
+                keyStack.Push(currentKey);
+            }
+            currentKey = null;
+            if (currentElem != null)
+            {
+                elemStack.Push(currentElem);
+            }
+            currentElem = createElement();
+        }
+        void InternalPopCurrentObjectAndPushToPrevContext()
+        {
+            //current element should be object
+            object c_object = currentElem;
+            if (elemStack.Count > 0)
+            {
+                //pop from stack
+                currentElem = elemStack.Pop();
+                currentKey = null;
+                if (c_object == currentElem)
+                {
+                    throw new System.Exception();
+                }
+
+                E c_elem = null;
+                A c_arr = null;
+                if ((c_elem = currentElem as E) != null)
+                {
+                    currentKey = keyStack.Pop();
+                    addElementAttribute(c_elem, currentKey, c_object);
+                }
+                else if ((c_arr = currentElem as A) != null)
+                {
+                    addArrayElement(c_arr, c_object);
+                }
+                else
+                {
+                    throw new System.NotSupportedException();
+                }
+            }
+        }
+        protected override void EndObject()
+        {
+            InternalPopCurrentObjectAndPushToPrevContext();
+        }
+        protected override void BeginArray()
+        {
+            if (currentKey != null)
+            {
+                keyStack.Push(currentKey);
+            }
+            currentKey = null;
+            if (currentElem != null)
+            {
+                elemStack.Push(currentElem);
+            }
+            currentElem = createArray();
+        }
+        protected override void EndArray()
+        {
+            InternalPopCurrentObjectAndPushToPrevContext();
+        }
+        protected override void OnParseEnd()
+        {
+
+        }
+        protected override void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
+        {
+            currentKey = tmpBuffer.ToString();
+
+        }
+        protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
+        {
+            object c_object = null;
+            switch (valueHint)
+            {
+                default:
+                case ValueHint.Comment:
+                    throw new System.NotSupportedException();
+                case ValueHint.Identifier:
+                    string iden = tmpBuffer.ToString();
+                    switch (iden)
+                    {
+                        case "true":
+                            c_object = true;
+                            break;
+                        case "false":
+                            c_object = false;
+                            break;
+                        case "null":
+                            c_object = null;
+                            break;
+                        default:
+                            c_object = iden;
+                            break;
+                    }
+                    break;
+                case ValueHint.StringLiteral:
+                    c_object = tmpBuffer.ToString();
+                    break;
+                case ValueHint.IntegerNumber:
+                    c_object = int.Parse(tmpBuffer.ToString());
+                    break;
+                case ValueHint.NumberWithFractionPart:
+                case ValueHint.NumberWithSignedExponentialPart:
+                case ValueHint.NumberWithExponentialPart:
+                    c_object = double.Parse(tmpBuffer.ToString());
+                    break;
+
+            }
+
+            E c_elem = null;
+            A c_arr = null;
+            if ((c_elem = currentElem as E) != null)
+            {
+                currentKey = keyStack.Pop();
+                addElementAttribute(c_elem, currentKey, c_object);
+            }
+            else if ((c_arr = currentElem as A) != null)
+            {
+                addArrayElement(c_arr, c_object);
+            }
+            else
+            {
+                throw new System.NotSupportedException();
+            }
+
+        }
+        protected override void NotifyError()
+        {
+            base.NotifyError();
+        }
+        protected override void OnError(ref int currentIndex)
+        {
+            base.OnError(ref currentIndex);
+        }
+        public object CurrentElement { get { return currentElem; } }
     }
 }
