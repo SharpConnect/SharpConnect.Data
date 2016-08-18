@@ -5,6 +5,53 @@ using System.Collections.Generic;
 using System.Text;
 namespace SharpConnect.Data
 {
+    public class EaseDocument : EsDoc
+    {
+        Dictionary<string, int> stringTable = new Dictionary<string, int>();
+        public EaseDocument()
+        {
+
+        }
+        public EsElem CreateElement(string elementName)
+        {
+            return new EaseElement(elementName, this);
+        }
+        public EsElem CreateElement()
+        {
+            return new EaseElement("", this);
+        }
+        public EsArr CreateArray()
+        {
+            return new EaseArray();
+        }
+        public int GetStringIndex(string str)
+        {
+            int found;
+            stringTable.TryGetValue(str, out found);
+            return found;
+        }
+        public EsElem DocumentElement
+        {
+            get;
+            set;
+        }
+        public EsElem Parse(string jsonstr)
+        {
+            char[] buffer = jsonstr.ToCharArray();
+            return Parse(buffer);
+        }
+        public EsElem Parse(char[] jsonstr)
+        {
+            var parser = new EaseDocParser(this);
+            parser.Parse(jsonstr);
+            return parser.CurrentElement as EsElem;
+        }
+    }
+
+    
+
+
+
     class EaseArray : List<object>, EsArr
     {
         public void AddItem(object item)

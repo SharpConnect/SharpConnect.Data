@@ -35,7 +35,7 @@ namespace SharpConnect.Data
                     }
                     for (int i = 0; i < col_count; ++i)
                     {
-                        columns[i].AddData(cells[i]);
+                        columns[i].AppendData(cells[i]);
                     }
 
                     line_id++;

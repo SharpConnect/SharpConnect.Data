@@ -108,6 +108,21 @@ namespace SharpConnect.Data
         {
             _columnNameState = ColumnNameState.Dirty;
         }
+
+        public void AppendNewRow(object[] cells)
+        {
+            //append data to each column
+            int j = cells.Length;
+            if (j != _dataColumns.Count)
+            {
+                throw new NotSupportedException("row count not match!");
+            }
+            for (int i = j - 1; i >= 0; --i)
+            {
+                _dataColumns[i].AppendData(cells[i]);
+            }
+        }
+
     }
 
     public class EsTableColumn
@@ -128,9 +143,9 @@ namespace SharpConnect.Data
             }
         }
         /// <summary>
-        /// TODO: review here when da
+        /// TODO: review here  ***
         /// </summary>
-        internal string ColumnName
+        public string ColumnName
         {
             get { return _name; }
             set
@@ -143,7 +158,8 @@ namespace SharpConnect.Data
             get;
             set;
         }
-        public void AddData(object data)
+
+        public void AppendData(object data)
         {
             _cells.Add(data);
         }
