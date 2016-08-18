@@ -1,5 +1,4 @@
 ﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
-
 using System.Collections.Generic;
 namespace SharpConnect.Data
 {
@@ -18,6 +17,7 @@ namespace SharpConnect.Data
         EsAttr GetAttribute(string key);
         int ChildCount { get; }
         object GetChild(int index);
+        object this[string attrName] { get; set; }
     }
     public interface EsAttr
     {
@@ -34,27 +34,18 @@ namespace SharpConnect.Data
         object this[int index] { get; set; }
     }
 
-    public class EsDoc
+    public interface EsDoc
     {
-        Dictionary<string, int> stringTable = new Dictionary<string, int>();
-        public EsElem CreateElement(string elementName)
-        {
-            return new EaseElement(elementName, this);
-        }
-        public EsArr CreateArray()
-        {
-            return new EaseArray();
-        }
-        public int GetStringIndex(string str)
-        {
-            int found;
-            stringTable.TryGetValue(str, out found);
-            return found;
-        }
-        public EsElem DocumentElement
-        {
-            get;
-            set;
-        }
+
+        EsElem CreateElement(string elementName);
+        EsElem CreateElement();
+        EsArr CreateArray();
+        EsElem DocumentElement { get; set; }
+        //public int GetStringIndex(string str)
+        //{
+        //    int found;
+        //    stringTable.TryGetValue(str, out found);
+        //    return found;
+        //}
     }
 }
