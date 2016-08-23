@@ -48,10 +48,6 @@ namespace SharpConnect.Data
         }
     }
 
-    
-
-
-
     class EaseArray : List<object>, EsArr
     {
         public void AddItem(object item)
@@ -453,6 +449,13 @@ namespace SharpConnect.Data
             else if (elem is EsArr)
             {
                 WriteJson((EsArr)elem, stBuilder);
+            }
+            else if (elem is DateTime)
+            {
+                //write datetime as string
+                stBuilder.Append('"');
+                stBuilder.Append(string.Format("{0:u}",(DateTime)elem)); 
+                stBuilder.Append('"');
             }
             else
             {
