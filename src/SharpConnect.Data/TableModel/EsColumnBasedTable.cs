@@ -66,9 +66,29 @@ namespace SharpConnect.Data
         {
             if (!_colNames.ContainsKey(colName))
             {
+                EsTableColumn prevOne = null;
+                if (_dataColumns.Count > 0)
+                {
+                    prevOne = _dataColumns[0];
+                }
+
                 var dataColumn = new EsTableColumn(this, colName);
+                _colNames.Add(colName, _dataColumns.Count);
                 _dataColumns.Add(dataColumn);
                 _columnNameState = ColumnNameState.Dirty;
+                //new column must have the same row number as others
+                if (prevOne != null)
+                {
+                    int prevColumnRowCount = prevOne.RowCount;
+                    if (prevColumnRowCount > 0)
+                    {
+                        //add null cell for the new column
+                        for (int i = prevColumnRowCount - 1; i >= 0; --i)
+                        {
+                            dataColumn.AppendData(null);
+                        }
+                    }
+                }
                 return dataColumn;
             }
             else
@@ -166,6 +186,10 @@ namespace SharpConnect.Data
         public object GetCellData(int rowIndex)
         {
             return _cells[rowIndex];
+        }
+        public void SetCellData(int rowIndex, object data)
+        {
+            _cells[rowIndex] = data;
         }
     }
     public enum EsColumnTypeHint
