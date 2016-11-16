@@ -8,7 +8,7 @@ namespace SharpConnect.Data
 {
     public static class EsColumnBasedTableHelper
     {
-        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc)
+        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc,char sep=',')
         {
             var table = new EsColumnBasedTable();
             using (var fs = new FileStream(file, FileMode.Open))
@@ -16,7 +16,7 @@ namespace SharpConnect.Data
                 var reader = new StreamReader(fs, enc);
                 int line_id = 0;
                 string firstline = reader.ReadLine();
-                string[] col_names = ParseCsvLine(firstline);
+                string[] col_names = ParseCsvLine(firstline,sep);
                 int col_count = col_names.Length;
                 EsTableColumn[] columns = new EsTableColumn[col_count];
                 for (int i = 0; i < col_count; ++i)
@@ -28,7 +28,7 @@ namespace SharpConnect.Data
                 string line = reader.ReadLine();
                 while (line != null)
                 {
-                    string[] cells = ParseCsvLine(line);
+                    string[] cells = ParseCsvLine(line, sep);
                     if (cells.Length != col_count)
                     {
                         throw new NotSupportedException("column count not match!");
@@ -47,7 +47,7 @@ namespace SharpConnect.Data
             return table;
         }
 
-        static string[] ParseCsvLine(string csvline)
+        static string[] ParseCsvLine(string csvline, char sep = ',')
         {
             char[] buffer = csvline.ToCharArray();
             List<string> output = new List<string>();
@@ -66,7 +66,7 @@ namespace SharpConnect.Data
                             {
                                 state = 1;
                             }
-                            else if (c == ',')
+                            else if (c == sep)
                             {
                                 output.Add(new string(currentBuffer.ToArray()));
                                 currentBuffer.Clear();
@@ -92,7 +92,7 @@ namespace SharpConnect.Data
                         break;
                     case 2:
                         {
-                            if (c == ',')
+                            if (c == sep)
                             {
                                 output.Add(new string(currentBuffer.ToArray()));
                                 currentBuffer.Clear();
