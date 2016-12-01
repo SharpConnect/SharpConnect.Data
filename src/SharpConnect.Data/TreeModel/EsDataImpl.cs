@@ -402,7 +402,7 @@ namespace SharpConnect.Data
         }
 
 
-        static void WriteJson(object elem, StringBuilder stBuilder)
+        public static void WriteJson(object elem, StringBuilder stBuilder)
         {
             //recursive
 #if DEBUG
@@ -454,7 +454,7 @@ namespace SharpConnect.Data
             {
                 //write datetime as string
                 stBuilder.Append('"');
-                stBuilder.Append(string.Format("{0:u}",(DateTime)elem)); 
+                stBuilder.Append(string.Format("{0:u}", (DateTime)elem));
                 stBuilder.Append('"');
             }
             else
