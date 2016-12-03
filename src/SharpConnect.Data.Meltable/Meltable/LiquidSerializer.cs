@@ -15,18 +15,18 @@ namespace SharpConnect.Data.Meltable
         {
             this.writer = writer;
         }
-        public void WriteDocument(LiquidDoc doc)
+        public void WriteDocument(EsDoc doc)
         {
             //write liquid document
-            LiquidElement docRoot = doc.DocumentElement;
+            EsElem docRoot = doc.DocumentElement;
             WriteElement(docRoot);
         }
-        public void WriteElement(LiquidElement elem)
+        public void WriteElement(EsElem elem)
         {
             //object marker         
             WriteStartObject();
             //write number of child 
-            foreach (LiquidAttribute attr in elem.GetAttributeIterForward())
+            foreach (EsAttr attr in elem.GetAttributeIterForward())
             {
                 //key
                 WriteString(attr.Name);
@@ -44,7 +44,7 @@ namespace SharpConnect.Data.Meltable
             //--------
             WriteEndObject();
         }
-        public void WriteArray(LiquidArray arr)
+        public void WriteArray(EsArr arr)
         {
             WriteStartArray();
             int count = arr.Count;
@@ -380,13 +380,13 @@ namespace SharpConnect.Data.Meltable
             }
             //----------------------------
             //write value
-            var elem = o as LiquidElement;
+            var elem = o as EsElem;
             if (elem != null)
             {
                 WriteElement(elem);
                 return;
             }
-            var arr = o as LiquidArray;
+            var arr = o as EsArr;
             if (arr != null)
             {
                 WriteArray(arr);
