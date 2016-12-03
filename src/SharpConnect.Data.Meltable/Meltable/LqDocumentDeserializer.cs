@@ -18,10 +18,10 @@ namespace SharpConnect.Data.Meltable
         }
 
         ParsingState _state;
-        LiquidDoc _doc;
+        EsDoc _doc;
 
-        LiquidElement _currentElement;
-        LiquidArray _currentArray;
+        EsElem _currentElement;
+        EsArr _currentArray;
         object _currentObject;
 
         Stack<object> _objStack = new Stack<object>();
@@ -35,7 +35,7 @@ namespace SharpConnect.Data.Meltable
         }
         public void ReadDocument()
         {
-            _doc = new LiquidDoc();
+            _doc = new EaseDocument();
 
             //init all values
             _state = ParsingState.Init;
@@ -51,7 +51,7 @@ namespace SharpConnect.Data.Meltable
             _doc.DocumentElement = _currentElement;
 
         }
-        public LiquidDoc Result
+        public EsDoc Result
         {
             get { return this._doc; }
         }
@@ -89,7 +89,7 @@ namespace SharpConnect.Data.Meltable
         protected override void OnEndArray()
         {
             //end current array
-            LiquidArray tmpCurrentObject = _currentArray;
+            EsArr tmpCurrentObject = _currentArray;
             string prevKey = _keyName;
 
             RestorePrevState();
@@ -97,12 +97,12 @@ namespace SharpConnect.Data.Meltable
             switch (_state)
             {
                 case ParsingState.ExpectArrayValue:
-                    _currentArray = (LiquidArray)_currentObject;
+                    _currentArray = (EsArr)_currentObject;
                     _currentArray.AddItem(_currentArray);
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement = (LiquidElement)_currentObject;
-                   
+                    _currentElement = (EsElem)_currentObject;
+
                     AppendKeyValue(_currentArray);
                     break;
                 default: throw new NotSupportedException();
@@ -121,7 +121,7 @@ namespace SharpConnect.Data.Meltable
         protected override void OnEndObject()
         {
             //end current object
-            LiquidElement tmpCurrentObject = _currentElement;
+            EsElem tmpCurrentObject = _currentElement;
             string prevKey = _keyName;
             RestorePrevState();
             switch (_state)
@@ -132,8 +132,8 @@ namespace SharpConnect.Data.Meltable
                     throw new NotSupportedException();
                     break;
                 case ParsingState.ExpectKeyValue:
-                    _currentElement = (LiquidElement)_currentObject;
-                    AppendKeyValue(tmpCurrentObject); 
+                    _currentElement = (EsElem)_currentObject;
+                    AppendKeyValue(tmpCurrentObject);
                     break;
                 default: throw new NotSupportedException();
             }
