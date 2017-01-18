@@ -291,7 +291,7 @@ namespace SharpConnect.Data
         }
         public static int GetAttributeValueAsInt32(this EsElem esElem, string attrName)
         {
-            return (int)esElem.GetAttributeValue(attrName);
+            return Convert.ToInt32(esElem.GetAttributeValue(attrName));
         }
         public static bool GetAttributeValueAsBool(this EsElem esElem, string attrName)
         {

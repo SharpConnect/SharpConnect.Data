@@ -1,4 +1,4 @@
-﻿//2016, EngineKit
+﻿//MIT, 2016-2017, MoonTrip Project
 using System;
 using System.IO;
 using System.IO.Compression;
