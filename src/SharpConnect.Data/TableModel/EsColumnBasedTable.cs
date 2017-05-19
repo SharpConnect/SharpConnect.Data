@@ -155,6 +155,13 @@ namespace SharpConnect.Data
                 _name = value;
             }
         }
+        public void NewBlankRows(int rowCount, object initData)
+        {
+            for (int i = rowCount - 1; i >= 0; --i)
+            {
+                _cells.Add(initData);
+            }
+        }
         public EsColumnTypeHint TypeHint
         {
             get;
@@ -168,6 +175,10 @@ namespace SharpConnect.Data
         public object GetCellData(int rowIndex)
         {
             return _cells[rowIndex];
+        }
+        public void SetCellData(int rowIndex, object data)
+        {
+            _cells[rowIndex] = data;
         }
         public int FindRow(string data)
         {
