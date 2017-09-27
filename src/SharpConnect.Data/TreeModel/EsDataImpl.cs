@@ -297,9 +297,19 @@ namespace SharpConnect.Data
         {
             return (bool)esElem.GetAttributeValue(attrName);
         }
+        public static bool GetAttributeValueAsBool(this EsElem esElem, string attrName, bool defaultIfNotExists)
+        {
+            object found = esElem.GetAttributeValue(attrName);
+            if (found == null) return defaultIfNotExists;
+            return (bool)found;
+        }
         public static EsArr GetAttributeValueAsArray(this EsElem esElem, string attrName)
         {
             return esElem.GetAttributeValue(attrName) as EsArr;
+        }
+        public static EsElem GetAttributeValueAsElem(this EsElem esElem, string attrName)
+        {
+            return esElem.GetAttributeValue(attrName) as EsElem;
         }
         //-----------------------------------------------------------------------
         public static void WriteJson(this EsDoc doc, StringBuilder stBuilder)
@@ -459,6 +469,8 @@ namespace SharpConnect.Data
             }
             else
             {
+                //anonymous type
+
                 throw new NotSupportedException();
             }
         }
