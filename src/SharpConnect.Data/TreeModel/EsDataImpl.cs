@@ -48,10 +48,6 @@ namespace SharpConnect.Data
         }
     }
 
-    
-
-
-
     class EaseArray : List<object>, EsArr
     {
         public void AddItem(object item)
@@ -295,15 +291,25 @@ namespace SharpConnect.Data
         }
         public static int GetAttributeValueAsInt32(this EsElem esElem, string attrName)
         {
-            return (int)esElem.GetAttributeValue(attrName);
+            return Convert.ToInt32(esElem.GetAttributeValue(attrName));
         }
         public static bool GetAttributeValueAsBool(this EsElem esElem, string attrName)
         {
             return (bool)esElem.GetAttributeValue(attrName);
         }
+        public static bool GetAttributeValueAsBool(this EsElem esElem, string attrName, bool defaultIfNotExists)
+        {
+            object found = esElem.GetAttributeValue(attrName);
+            if (found == null) return defaultIfNotExists;
+            return (bool)found;
+        }
         public static EsArr GetAttributeValueAsArray(this EsElem esElem, string attrName)
         {
             return esElem.GetAttributeValue(attrName) as EsArr;
+        }
+        public static EsElem GetAttributeValueAsElem(this EsElem esElem, string attrName)
+        {
+            return esElem.GetAttributeValue(attrName) as EsElem;
         }
         //-----------------------------------------------------------------------
         public static void WriteJson(this EsDoc doc, StringBuilder stBuilder)
@@ -406,7 +412,7 @@ namespace SharpConnect.Data
         }
 
 
-        static void WriteJson(object elem, StringBuilder stBuilder)
+        public static void WriteJson(object elem, StringBuilder stBuilder)
         {
             //recursive
 #if DEBUG
@@ -454,8 +460,17 @@ namespace SharpConnect.Data
             {
                 WriteJson((EsArr)elem, stBuilder);
             }
+            else if (elem is DateTime)
+            {
+                //write datetime as string
+                stBuilder.Append('"');
+                stBuilder.Append(string.Format("{0:u}", (DateTime)elem));
+                stBuilder.Append('"');
+            }
             else
             {
+                //anonymous type
+
                 throw new NotSupportedException();
             }
         }

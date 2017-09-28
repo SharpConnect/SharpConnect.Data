@@ -123,6 +123,8 @@ namespace SharpConnect.Data
             }
         }
 
+
+
     }
 
     public class EsTableColumn
@@ -153,6 +155,13 @@ namespace SharpConnect.Data
                 _name = value;
             }
         }
+        public void NewBlankRows(int rowCount, object initData)
+        {
+            for (int i = rowCount - 1; i >= 0; --i)
+            {
+                _cells.Add(initData);
+            }
+        }
         public EsColumnTypeHint TypeHint
         {
             get;
@@ -166,6 +175,27 @@ namespace SharpConnect.Data
         public object GetCellData(int rowIndex)
         {
             return _cells[rowIndex];
+        }
+        public void SetCellData(int rowIndex, object data)
+        {
+            _cells[rowIndex] = data;
+        }
+        public int FindRow(string data)
+        {
+            int j = _cells.Count;
+            for (int i = 0; i < j; ++i)
+            {
+                if ((string)_cells[i] == data)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        public static void CloneAllCells(EsTableColumn origin, EsTableColumn target)
+        {
+            target._cells.AddRange(origin._cells);
         }
     }
     public enum EsColumnTypeHint

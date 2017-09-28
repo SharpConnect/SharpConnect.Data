@@ -90,6 +90,7 @@ namespace SharpConnect.Es
         protected virtual void OnError(ref int currentIndex)
         {
 
+
         }
         protected virtual void OnParseEnd()
         {
@@ -898,7 +899,7 @@ namespace SharpConnect.Es
         }
         protected override void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
         {
-            currentKey = tmpBuffer.ToString(); 
+            currentKey = tmpBuffer.ToString();
         }
         protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
         {
@@ -944,7 +945,6 @@ namespace SharpConnect.Es
             A c_arr = null;
             if ((c_elem = currentElem as E) != null)
             {
-
                 AddElementAttribute(c_elem, currentKey, c_object);
             }
             else if ((c_arr = currentElem as A) != null)

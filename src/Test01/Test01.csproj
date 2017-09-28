@@ -39,13 +39,13 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\SharpConnect.MySql\src\SharpConnect.MySql.Net20\SharpConnect.MySql.csproj">
+      <Project>{94D01EDE-0499-422F-8081-90D94AD163FA}</Project>
+      <Name>SharpConnect.MySql</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SharpConnect.Data\SharpConnect.Data.csproj">
       <Project>{9afb3f52-d37d-4fba-ac0d-76d95ae956b0}</Project>
       <Name>SharpConnect.Data</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\SharpConnect.Data\SharpConnect.Data.Meltable\SharpConnect.Data.Meltable.csproj">
-      <Project>{e52375f0-9dcb-42d9-a555-5c47c1af4e3b}</Project>
-      <Name>SharpConnect.Data.Meltable</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
