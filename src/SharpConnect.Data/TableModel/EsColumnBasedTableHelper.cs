@@ -8,27 +8,47 @@ namespace SharpConnect.Data
 {
     public static class EsColumnBasedTableHelper
     {
-        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc,char sep=',')
+        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc, bool firstRowIsColumns)
         {
             var table = new EsColumnBasedTable();
             using (var fs = new FileStream(file, FileMode.Open))
             {
                 var reader = new StreamReader(fs, enc);
                 int line_id = 0;
+                int col_count = 0;
+                EsTableColumn[] columns = null;
                 string firstline = reader.ReadLine();
-                string[] col_names = ParseCsvLine(firstline,sep);
-                int col_count = col_names.Length;
-                EsTableColumn[] columns = new EsTableColumn[col_count];
-                for (int i = 0; i < col_count; ++i)
+                if (!firstRowIsColumns)
                 {
-                    columns[i] = table.CreateDataColumn(col_names[i]);
+                    //when first line is not column 
+                    string[] cells = ParseCsvLine(firstline);
+                    col_count = cells.Length;
+                    columns = new EsTableColumn[col_count];
+                    for (int i = 0; i < col_count; ++i)
+                    {
+                        columns[i] = table.CreateDataColumn("col_" + i);
+                    }
+                    for (int i = 0; i < col_count; ++i)
+                    {
+                        columns[i].AppendData(cells[i]);
+                    }
                 }
+                else
+                {
 
+                    string[] col_names = ParseCsvLine(firstline);
+                    col_count = col_names.Length;
+                    columns = new EsTableColumn[col_count];
+                    for (int i = 0; i < col_count; ++i)
+                    {
+                        columns[i] = table.CreateDataColumn(col_names[i]);
+                    }
+                }
                 line_id++;
                 string line = reader.ReadLine();
                 while (line != null)
                 {
-                    string[] cells = ParseCsvLine(line, sep);
+                    string[] cells = ParseCsvLine(line);
                     if (cells.Length != col_count)
                     {
                         throw new NotSupportedException("column count not match!");
@@ -47,7 +67,7 @@ namespace SharpConnect.Data
             return table;
         }
 
-        static string[] ParseCsvLine(string csvline, char sep = ',')
+        static string[] ParseCsvLine(string csvline)
         {
             char[] buffer = csvline.ToCharArray();
             List<string> output = new List<string>();
@@ -66,7 +86,7 @@ namespace SharpConnect.Data
                             {
                                 state = 1;
                             }
-                            else if (c == sep)
+                            else if (c == ',')
                             {
                                 output.Add(new string(currentBuffer.ToArray()));
                                 currentBuffer.Clear();
@@ -92,7 +112,7 @@ namespace SharpConnect.Data
                         break;
                     case 2:
                         {
-                            if (c == sep)
+                            if (c == ',')
                             {
                                 output.Add(new string(currentBuffer.ToArray()));
                                 currentBuffer.Clear();
@@ -114,9 +134,146 @@ namespace SharpConnect.Data
             }
             if (currentBuffer.Count > 0)
             {
+
                 output.Add(new string(currentBuffer.ToArray()));
             }
+            else
+            {
+                if (state == 2)
+                {
+                    output.Add(new string(currentBuffer.ToArray()));
+                }
+            }
             return output.ToArray();
+        }
+
+        public static void AddColumns(this EsColumnBasedTable table, params string[] columnNames)
+        {
+            int j = columnNames.Length;
+            for (int i = 0; i < j; ++i)
+            {
+                table.CreateDataColumn(columnNames[i]);
+            }
+        }
+        public static void SaveAsCsvFile(this EsColumnBasedTable table, string filename, Encoding enc)
+        {
+            using (FileStream fs = new FileStream(filename, FileMode.Create))
+            using (StreamWriter w = new StreamWriter(fs, enc))
+            {
+                //1. table column 
+                int colCount = table.ColumnCount;
+                for (int i = 0; i < colCount; ++i)
+                {
+                    if (i > 0)
+                    {
+                        w.Write(',');
+                    }
+                    var col = table.GetColumn(i);
+                    w.Write('"');
+                    w.Write(col.ColumnName);
+                    w.Write('"');
+                }
+
+                //2. rows
+                int rowCount = table.RowCount;
+                for (int r = 0; r < rowCount; ++r)
+                {
+                    w.WriteLine();
+                    for (int c = 0; c < colCount; ++c)
+                    {
+                        if (c > 0)
+                        {
+                            w.Write(',');
+                        }
+                        object cell = table.GetCellData(r, c);
+                        w.Write('"');
+                        w.Write(cell.ToString());
+                        w.Write('"');
+                    }
+                }
+
+                w.Close();
+                fs.Close();
+            }
+        }
+        public static EsColumnBasedTable Clone(this EsColumnBasedTable table, EsTableColumn[] selectedColumns = null)
+        {
+            int allColCount = 0;
+            if (selectedColumns == null)
+            {
+                //=> select all
+                allColCount = table.ColumnCount;
+                selectedColumns = new EsTableColumn[allColCount];
+                for (int i = 0; i < allColCount; ++i)
+                {
+                    selectedColumns[i] = table.GetColumn(i);
+                }
+            }
+            else
+            {
+                allColCount = selectedColumns.Length;
+            }
+            //else clone only selected columns
+
+            EsColumnBasedTable newTable = new EsColumnBasedTable();
+            //1. create new columns
+            for (int n = 0; n < allColCount; ++n)
+            {
+                EsTableColumn orgColumn = selectedColumns[n];
+                EsTableColumn newColumn = newTable.CreateDataColumn(orgColumn.ColumnName);
+                EsTableColumn.CloneAllCells(orgColumn, newColumn);
+            }
+            return newTable;
+        }
+    
+        public static void SaveAsJsArrayFile(this EsColumnBasedTable table, string filename, Encoding enc)
+        {
+            using (FileStream fs = new FileStream(filename, FileMode.Create))
+            using (StreamWriter w = new StreamWriter(fs, enc))
+            {
+                //1. table column 
+                int colCount = table.ColumnCount;
+                w.Write('[');
+                {
+                    w.Write('[');
+                    for (int i = 0; i < colCount; ++i)
+                    {
+                        if (i > 0)
+                        {
+                            w.Write(',');
+                        }
+                        var col = table.GetColumn(i);
+                        w.Write('"');
+                        w.Write(col.ColumnName);
+                        w.Write('"');
+                    }
+                    w.Write(']');
+
+                    //2. rows
+                    int rowCount = table.RowCount;
+                    for (int r = 0; r < rowCount; ++r)
+                    {
+                        w.Write(',');
+                        w.WriteLine();
+                        w.Write('[');
+                        for (int c = 0; c < colCount; ++c)
+                        {
+                            if (c > 0)
+                            {
+                                w.Write(',');
+                            }
+                            object cell = table.GetCellData(r, c);
+                            w.Write('"');
+                            w.Write(cell.ToString());
+                            w.Write('"');
+                        }
+                        w.Write(']');
+                    }
+                }
+                w.Write(']');
+                w.Close();
+                fs.Close();
+            }
         }
     }
 }
