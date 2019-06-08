@@ -112,18 +112,17 @@ namespace SharpConnect.Data
         public void AppendNewRow(object[] cells)
         {
             //append data to each column
-            int j = cells.Length;
-            if (j != _dataColumns.Count)
+
+            if (cells.Length != _dataColumns.Count)
             {
                 throw new NotSupportedException("row count not match!");
             }
-            for (int i = j - 1; i >= 0; --i)
+
+            for (int i = 0; i < cells.Length; ++i)
             {
                 _dataColumns[i].AppendData(cells[i]);
             }
         }
-
-
 
     }
 

@@ -6,8 +6,10 @@ using System.IO;
 using System.Text;
 namespace SharpConnect.Data
 {
+
     public static class EsColumnBasedTableHelper
     {
+        public static Encoding s_defaultEncoding = Encoding.UTF8;
         public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc, bool firstRowIsColumns)
         {
             var table = new EsColumnBasedTable();
@@ -155,8 +157,12 @@ namespace SharpConnect.Data
                 table.CreateDataColumn(columnNames[i]);
             }
         }
-        public static void SaveAsCsvFile(this EsColumnBasedTable table, string filename, Encoding enc)
+        public static void SaveAsCsvFile(this EsColumnBasedTable table, string filename, Encoding enc = null)
         {
+            if (enc == null)
+            {
+                enc = s_defaultEncoding;
+            }
             using (FileStream fs = new FileStream(filename, FileMode.Create))
             using (StreamWriter w = new StreamWriter(fs, enc))
             {
@@ -225,9 +231,14 @@ namespace SharpConnect.Data
             }
             return newTable;
         }
-    
-        public static void SaveAsJsArrayFile(this EsColumnBasedTable table, string filename, Encoding enc)
+
+        public static void SaveAsJsArrayFile(this EsColumnBasedTable table, string filename, Encoding enc = null)
         {
+            if (enc == null)
+            {
+                enc = s_defaultEncoding;
+            }
+
             using (FileStream fs = new FileStream(filename, FileMode.Create))
             using (StreamWriter w = new StreamWriter(fs, enc))
             {
@@ -275,5 +286,78 @@ namespace SharpConnect.Data
                 fs.Close();
             }
         }
+
+
+        public static EsColumnBasedTable CreateNewTable(this EsColumnBasedTable srcTable, string[] selectedColumns, RowEvaluator rowEval = null)
+        {
+            int[] selected_colIndexs = new int[selectedColumns.Length];
+            for (int i = 0; i < selectedColumns.Length; ++i)
+            {
+                selected_colIndexs[i] = srcTable.GetColumnIndex(selectedColumns[i]);
+            }
+
+            EsColumnBasedTable newTable = new EsColumnBasedTable();
+            newTable.AddColumns(selectedColumns);
+            int rowCount = srcTable.RowCount;
+
+            int colCount = selectedColumns.Length;
+            object[] newRow = new object[colCount];
+
+            if (rowEval != null)
+            {
+                RowVisitor rowVisitor = new RowVisitor();
+                rowVisitor._cells = newRow;
+                for (int r = 0; r < rowCount && !rowVisitor._stop; ++r)
+                {
+                    rowVisitor._skipThisRow = false;//reset
+                    for (int c = 0; c < newRow.Length; ++c)
+                    {
+                        newRow[c] = srcTable.GetCellData(r, selected_colIndexs[c]);
+                    }
+                    //
+                    rowEval(rowVisitor);
+                    //
+                    if (rowVisitor.SkipThisRow)
+                    {
+                        continue;
+                    }
+                    newTable.AppendNewRow(newRow);
+                }
+            }
+            else
+            {
+                for (int r = 0; r < rowCount; ++r)
+                {
+                    for (int c = 0; c < newRow.Length; ++c)
+                    {
+                        newRow[c] = srcTable.GetCellData(r, c);
+                    }
+                    newTable.AppendNewRow(newRow);
+                }
+            }
+
+            return newTable;
+        }
+
+
+
+        public delegate void RowEvaluator(RowVisitor vis);
+
+        public class RowVisitor
+        {
+            internal object[] _cells;
+            internal bool _stop;
+            internal bool _skipThisRow;
+
+            public object[] Cells => _cells;
+            public bool SkipThisRow
+            {
+                get => _skipThisRow;
+                set => _skipThisRow = value;
+            }
+            public void Stop() { _stop = true; }
+            public int RowCount { get; set; }
+        }
+
     }
 }

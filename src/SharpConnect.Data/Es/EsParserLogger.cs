@@ -1,7 +1,7 @@
 ﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
 using System;
 using System.IO;
-namespace SharpConnect.Es
+namespace SharpConnect.Data
 {
 #if DEBUG
     static class dbugEsParserLogger

@@ -4,7 +4,7 @@ using System;
 
 namespace SharpConnect.Data
 {
-    class EaseDocParser : Es.EsParserBase<EsElem, EsArr>
+    class EaseDocParser : EsParserBase<EsElem, EsArr>
     {
         EaseDocument easeDoc;
         public EaseDocParser(EaseDocument blankdoc)
@@ -29,7 +29,7 @@ namespace SharpConnect.Data
         protected override void AddArrayElement(EsArr targetArray, object value)
         {
             targetArray.AddItem(value);
-        } 
+        }
     }
 
 }
