@@ -41,11 +41,5 @@ namespace SharpConnect.Data
         EsElem CreateElement();
         EsArr CreateArray();
         EsElem DocumentElement { get; set; }
-        //public int GetStringIndex(string str)
-        //{
-        //    int found;
-        //    stringTable.TryGetValue(str, out found);
-        //    return found;
-        //}
     }
 }

@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{A34AE026-1812-4244-A6E1-5EA41557BF30}</ProjectGuid>
+    <ProjectGuid>{4C30DCAC-A269-4037-997C-0C60B420A6BA}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Test01</RootNamespace>
@@ -39,10 +39,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\SharpConnect.MySql\src\SharpConnect.MySql.Net20\SharpConnect.MySql.csproj">
-      <Project>{94D01EDE-0499-422F-8081-90D94AD163FA}</Project>
-      <Name>SharpConnect.MySql</Name>
-    </ProjectReference>
     <ProjectReference Include="..\SharpConnect.Data\SharpConnect.Data.csproj">
       <Project>{9afb3f52-d37d-4fba-ac0d-76d95ae956b0}</Project>
       <Name>SharpConnect.Data</Name>

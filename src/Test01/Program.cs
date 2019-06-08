@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using SharpConnect.Data;
-using SharpConnect.Data.Meltable;
+
 
 namespace Test01
 {
@@ -15,7 +15,7 @@ namespace Test01
         }
         static void TestLqDoc()
         {
-            LiquidDoc doc = new LiquidDoc();
+            EaseDocument doc = new EaseDocument();
             var elem = doc.CreateElement("user_info");
             doc.DocumentElement = elem;
             elem.AppendAttribute("first_name", "A");
@@ -35,30 +35,6 @@ namespace Test01
 
             List<int> memberlist4 = new List<int>() { 1, 2, 3, 4, 5 };
             elem.AppendAttribute("memberlist4", memberlist4);
-
-
-            byte[] output = null;
-            using (var ms = new MemoryStream())
-            {
-                var ser = new LiquidSerializer();
-                var binWriter = new BinaryWriter(ms);
-                ser.SetBinaryWriter(binWriter);
-
-                ser.WriteDocument(doc);
-
-                output = ms.ToArray();
-                ms.Close();
-            }
-
-            using (var ms = new MemoryStream(output))
-            {
-                var docDeser = new LiquidDocumentDeserializer();
-
-                var reader = new BinaryReader(ms);
-                docDeser.SetBinaryReader(reader);
-                docDeser.ReadDocument();
-                LiquidDoc result = docDeser.Result;
-            }
         }
     }
 }

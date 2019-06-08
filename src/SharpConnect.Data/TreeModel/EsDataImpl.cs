@@ -7,7 +7,7 @@ namespace SharpConnect.Data
 {
     public class EaseDocument : EsDoc
     {
-        Dictionary<string, int> stringTable = new Dictionary<string, int>();
+        Dictionary<string, int> _stringTable = new Dictionary<string, int>();
         public EaseDocument()
         {
 
@@ -26,8 +26,7 @@ namespace SharpConnect.Data
         }
         public int GetStringIndex(string str)
         {
-            int found;
-            stringTable.TryGetValue(str, out found);
+            _stringTable.TryGetValue(str, out int found);
             return found;
         }
         public EsElem DocumentElement
@@ -37,8 +36,7 @@ namespace SharpConnect.Data
         }
         public EsElem Parse(string jsonstr)
         {
-            char[] buffer = jsonstr.ToCharArray();
-            return Parse(buffer);
+            return Parse(jsonstr.ToCharArray());
         }
         public EsElem Parse(char[] jsonstr)
         {
@@ -138,7 +136,7 @@ namespace SharpConnect.Data
         {
             if (_attributeDic01 != null)
             {
-                foreach (EsAttr attr in this._attributeDic01.Values)
+                foreach (EsAttr attr in _attributeDic01.Values)
                 {
                     yield return attr;
                 }
@@ -292,6 +290,10 @@ namespace SharpConnect.Data
         public static int GetAttributeValueAsInt32(this EsElem esElem, string attrName)
         {
             return Convert.ToInt32(esElem.GetAttributeValue(attrName));
+        }
+        public static uint GetAttributeValueAsUInt32(this EsElem esElem, string attrName)
+        {
+            return Convert.ToUInt32(esElem.GetAttributeValue(attrName));
         }
         public static bool GetAttributeValueAsBool(this EsElem esElem, string attrName)
         {
@@ -469,9 +471,8 @@ namespace SharpConnect.Data
             }
             else
             {
-                //anonymous type
-
-                throw new NotSupportedException();
+                stBuilder.Append(elem.ToString());
+                //throw new NotSupportedException();
             }
         }
         //-----------------------------------------------------------------------

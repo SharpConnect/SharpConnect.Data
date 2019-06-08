@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SharpConnect.Es
+namespace SharpConnect.Data
 {
 
     /// <summary>
@@ -58,7 +58,7 @@ namespace SharpConnect.Es
         {
             if (dbug_EnableLogParser)
             {
-                dbugEsParserLogger.Init("d:\\WImageTest\\parse_json.txt");
+                dbugEsParserLogger.Init("parse_json.txt");
             }
         }
 #endif 
@@ -103,6 +103,71 @@ namespace SharpConnect.Es
         protected virtual void NotifyError()
         {
         }
+        static void ReadSingleLineComment(char[] sourceBuffer, int startAt, ref int latestIndex)
+        {
+            latestIndex = startAt;
+            for (; latestIndex < sourceBuffer.Length; ++latestIndex)
+            {
+                char c = sourceBuffer[latestIndex];
+                if (c == '\r')
+                {
+                    if (latestIndex < sourceBuffer.Length - 1)
+                    {
+                        if (sourceBuffer[latestIndex + 1] == '\n')
+                        {
+                            //r,n
+                            latestIndex++;
+                            return;
+                        }
+                        else
+                        {
+                            //???
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        //end
+                        return;
+                    }
+                }
+                else if (c == '\n')
+                {
+                    return;
+                }
+            }
+        }
+        static void ReadBlockComment(char[] sourceBuffer, int startAt, ref int latestIndex)
+        {
+            latestIndex = startAt;
+            for (; latestIndex < sourceBuffer.Length; ++latestIndex)
+            {
+                char c = sourceBuffer[latestIndex];
+                if (c == '*')
+                {
+                    if (latestIndex < sourceBuffer.Length - 1)
+                    {
+                        if (sourceBuffer[latestIndex + 1] == '/')
+                        {
+                            //r,n
+                            latestIndex++;
+                            return;
+                        }
+                        else
+                        {
+                            //read next
+                        }
+                    }
+                    else
+                    {
+                        //end
+                        return;
+                    }
+                }
+            }
+        }
+
+
         public virtual void Parse(char[] sourceBuffer)
         {
             OnParseStart();
@@ -132,7 +197,6 @@ namespace SharpConnect.Es
             {
                 if (!isSuccess)
                 {
-
                     OnError(ref i);
                     //handle the error ****
                     //#if DEBUG
@@ -161,8 +225,6 @@ namespace SharpConnect.Es
                             switch (c)
                             {
                                 case '{':
-
-
                                     BeginObject();
                                     //change current element kind after notification
                                     elemKindStack.Push(currentElementKind);
@@ -171,6 +233,35 @@ namespace SharpConnect.Es
                                     myBuffer.Length = 0;//clear
                                     isInKeyPart = true;
                                     currentState = ParsingState._1_ObjectKey;
+                                    break;
+                                case '/':
+                                    {
+                                        //-----------------------
+                                        //comment syntax
+                                        if (i < j - 1)
+                                        {
+                                            char next_c = sourceBuffer[i + 1];
+                                            if (next_c == '/')
+                                            {
+                                                int latestIndex = i + 1;
+                                                ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                                i = latestIndex;
+                                            }
+                                            else if (next_c == '*')
+                                            {
+                                                //inline comment
+                                                int latestIndex = i + 1;
+                                                ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                                i = latestIndex;
+                                            }
+                                            else
+                                            {
+                                                isSuccess = false;
+                                                NotifyError();
+                                            }
+                                        }
+                                        //-----------------------
+                                    }
                                     break;
                                 default:
                                     {
@@ -215,10 +306,12 @@ namespace SharpConnect.Es
                                 }
                                 else
                                 {
+#if DEBUG
                                     if (myBuffer.Length > 0)
                                     {
                                         //error at this state
                                     }
+#endif
                                     isInKeyPart = false;
                                     EndObject();//end current object 
                                     //1. close current object
@@ -237,6 +330,34 @@ namespace SharpConnect.Es
                                 currentValueHint = ValueHint.Identifier;
                                 myBuffer.Append(c); //collect identifier
                                 currentState = ParsingState._8_CollectIdentifier; //collect identifier
+                            }
+                            else if (c == '/')
+                            {
+                                //-----------------------
+                                //comment syntax
+                                if (i < j - 1)
+                                {
+                                    char next_c = sourceBuffer[i + 1];
+                                    if (next_c == '/')
+                                    {
+                                        int latestIndex = i + 1;
+                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                        i = latestIndex;
+                                    }
+                                    else if (next_c == '*')
+                                    {
+                                        //inline comment
+                                        int latestIndex = i + 1;
+                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                        i = latestIndex;
+                                    }
+                                    else
+                                    {
+                                        isSuccess = false;
+                                        NotifyError();
+                                    }
+                                }
+                                //-----------------------
                             }
                             else
                             {
@@ -380,6 +501,34 @@ namespace SharpConnect.Es
                             {
                                 continue;
                             }
+                            else if (c == '/')
+                            {
+                                //-----------------------
+                                //comment syntax
+                                if (i < j - 1)
+                                {
+                                    char next_c = sourceBuffer[i + 1];
+                                    if (next_c == '/')
+                                    {
+                                        int latestIndex = i + 1;
+                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                        i = latestIndex;
+                                    }
+                                    else if (next_c == '*')
+                                    {
+                                        //inline comment
+                                        int latestIndex = i + 1;
+                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                        i = latestIndex;
+                                    }
+                                    else
+                                    {
+                                        isSuccess = false;
+                                        NotifyError();
+                                    }
+                                }
+                                //-----------------------
+                            }
                             else
                             {
                                 //TODO: add recovery extension here
@@ -447,6 +596,34 @@ namespace SharpConnect.Es
                                 }
                                 currentState = ParsingState._6_AfterObjectValueOrArrayElement;
                             }
+                            else if (c == '/')
+                            {
+                                //-----------------------
+                                //comment syntax
+                                if (i < j - 1)
+                                {
+                                    char next_c = sourceBuffer[i + 1];
+                                    if (next_c == '/')
+                                    {
+                                        int latestIndex = i + 1;
+                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                        i = latestIndex;
+                                    }
+                                    else if (next_c == '*')
+                                    {
+                                        //inline comment
+                                        int latestIndex = i + 1;
+                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                        i = latestIndex;
+                                    }
+                                    else
+                                    {
+                                        isSuccess = false;
+                                        NotifyError();
+                                    }
+                                }
+                                //-----------------------
+                            }
                             else if (char.IsWhiteSpace(c))
                             {
                                 continue;
@@ -512,50 +689,40 @@ namespace SharpConnect.Es
                                     }
                                     currentState = ParsingState._6_AfterObjectValueOrArrayElement;
                                     break;
+                                case '/':
+                                    {
+                                        //-----------------------
+                                        //comment syntax
+                                        if (i < j - 1)
+                                        {
+                                            char next_c = sourceBuffer[i + 1];
+                                            if (next_c == '/')
+                                            {
+                                                int latestIndex = i + 1;
+                                                ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                                i = latestIndex;
+                                            }
+                                            else if (next_c == '*')
+                                            {
+                                                //inline comment
+                                                int latestIndex = i + 1;
+                                                ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+                                                i = latestIndex;
+                                            }
+                                            else
+                                            {
+                                                isSuccess = false;
+                                                NotifyError();
+                                            }
+                                        }
+                                        //-----------------------
+                                    }
+                                    break;
                                 default:
                                     //?
                                     //TODO: error recovery / or handle error with some extension 
                                     break;
                             }
-
-                            //else if (c == '\r' || c == '\n')
-                            //{
-                            //    //WARNING: review implicit comma
-                            //    //check if we enable this option  or not
-                            //    //if not -> this will error
-                            //    implicitComma = true;
-                            //}
-                            //else
-                            //{
-                            //    //WARNING: review implicit comma
-                            //    if (char.IsLetter(c) || c == '_' || c == '"')
-                            //    {
-                            //        if (implicitComma)
-                            //        {
-                            //            if (currentElementKind == EsElementKind.Object)
-                            //            {
-                            //                currentState = ParsingState._1_ObjectKey;
-                            //                isInKeyPart = true;
-
-                            //            }
-                            //            else
-                            //            {
-                            //                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
-                            //            }
-                            //            i--;
-                            //            implicitComma = false;
-                            //        }
-                            //        else
-                            //        {
-                            //            //?
-                            //        }
-                            //    }
-                            //    else
-                            //    {
-                            //        //eg. whitespace
-                            //        //?
-                            //    }
-                            //}
                         }
                         break;
                     case ParsingState._7_CollectNumberLiteral:
@@ -776,25 +943,39 @@ namespace SharpConnect.Es
             OnParseEnd();
 
         }
-        static uint ParseSingleChar(char c1, uint multipliyer)
+
+        static uint ParseSingleChar(char c1)
         {
-            if (c1 >= '0' && c1 <= '9')
-                return ((uint)(c1 - '0') * multipliyer);
-            else if (c1 >= 'A' && c1 <= 'F')
-                return ((uint)((c1 - 'A') + 10) * multipliyer);
-            else if (c1 >= 'a' && c1 <= 'f')
-                return ((uint)((c1 - 'a') + 10) * multipliyer);
-            else
-                return 0;
+            switch (c1)
+            {
+                case '0': return 0;
+                case '1': return 1;
+                case '2': return 2;
+                case '3': return 3;
+                case '4': return 4;
+                case '5': return 5;
+                case '6': return 6;
+                case '7': return 7;
+                case '8': return 8;
+                case '9': return 9;
+                case 'A': return 10;
+                case 'B': return 11;
+                case 'C': return 12;
+                case 'D': return 13;
+                case 'E': return 14;
+                case 'F': return 15;
+                default: return 0;
+            }
         }
         static uint ParseUnicode(char c1, char c2, char c3, char c4)
         {
-            uint p1 = ParseSingleChar(c1, 0x1000);
-            uint p2 = ParseSingleChar(c2, 0x100);
-            uint p3 = ParseSingleChar(c3, 0x10);
-            uint p4 = ParseSingleChar(c4, 1);
-            return p1 + p2 + p3 + p4;
+            return (ParseSingleChar(c1) << 16) |
+                    (ParseSingleChar(c2) << 8) |
+                    (ParseSingleChar(c3) << 4) |
+                    (ParseSingleChar(c4) << 0);
         }
+
+
     }
 
 
