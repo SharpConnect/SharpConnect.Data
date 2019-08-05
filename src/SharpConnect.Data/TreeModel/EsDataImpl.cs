@@ -222,28 +222,10 @@ namespace SharpConnect.Data
             Name = name;
             Value = value;
         }
-
-        public string Name
-        {
-            get;
-            set;
-        }
-        public object Value
-        {
-            get;
-            set;
-        }
-        public int AttributeLocalNameIndex
-        {
-            get
-            {
-                return _localNameIndex;
-            }
-        }
-        public override string ToString()
-        {
-            return Name + ":" + Value;
-        }
+        public string Name { get; set; }
+        public object Value { get; set; }
+        public int AttributeLocalNameIndex => _localNameIndex;
+        public override string ToString() => Name + ":" + Value;
     }
 
     public static class EsElemExtensionMethods
@@ -283,9 +265,17 @@ namespace SharpConnect.Data
             return (bool)value;
         }
         //----------------------------------------------------------------------- 
+        public static DateTime GetAttributeValueAsDateTime(this EsElem esElem, string attrName)
+        {
+            return (esElem.GetAttributeValue(attrName) is DateTime dtm) ? dtm : DateTime.MinValue;
+        }
         public static string GetAttributeValueAsString(this EsElem esElem, string attrName)
         {
             return esElem.GetAttributeValue(attrName) as string;
+        }
+        public static double GetAttributeValueAsDouble(this EsElem esElem, string attrName)
+        {
+            return Convert.ToDouble(esElem.GetAttributeValue(attrName));
         }
         public static int GetAttributeValueAsInt32(this EsElem esElem, string attrName)
         {
@@ -323,6 +313,7 @@ namespace SharpConnect.Data
                 WriteJson(docElem, stBuilder);
             }
         }
+
         static void WriteJson(EsArr esArr, StringBuilder stBuilder)
         {
             stBuilder.Append('[');
@@ -339,7 +330,6 @@ namespace SharpConnect.Data
         }
         public static void WriteJson(this EsElem esElem, StringBuilder stBuilder)
         {
-
             EaseElement leqE = (EaseElement)esElem;
             stBuilder.Append('{');
             //check docattr= 

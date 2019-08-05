@@ -1,4 +1,4 @@
-﻿//MIT, 2016-2017, MoonTrip Project
+﻿//MIT, 2016-2017 
 using System;
 using System.IO;
 using System.IO.Compression;
@@ -7,9 +7,9 @@ namespace SharpConnect.Data
 
     public static class CompressionUtils
     {
+
         public static byte[] GetCompressData(byte[] orgBuffer)
         {
-
             using (MemoryStream ms = new MemoryStream())
             using (GZipStream compressedzipStream = new GZipStream(ms, CompressionMode.Compress, true))
             {
