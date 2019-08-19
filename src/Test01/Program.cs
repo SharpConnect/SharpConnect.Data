@@ -11,9 +11,10 @@ namespace Test01
     {
         static void Main(string[] args)
         {
-            TestLqDoc();
+            TestParseEaseDoc();
+            TestParseCommentInJsonText();
         }
-        static void TestLqDoc()
+        static void TestParseEaseDoc()
         {
             EaseDocument doc = new EaseDocument();
             var elem = doc.CreateElement("user_info");
@@ -35,6 +36,20 @@ namespace Test01
 
             List<int> memberlist4 = new List<int>() { 1, 2, 3, 4, 5 };
             elem.AppendAttribute("memberlist4", memberlist4);
+        }
+        static void TestParseCommentInJsonText()
+        {
+            //test ease doc, json with comment 
+            string teststring = @"/**144*/{
+                    ""a"":20,/**144*/
+                    //this is a comment
+
+                    //another comment
+                    ""b"":""x""}/**144*/";
+
+            EaseDocument esdoc = new EaseDocument();
+            EsElem esElem = esdoc.Parse(teststring);
+
         }
     }
 }
