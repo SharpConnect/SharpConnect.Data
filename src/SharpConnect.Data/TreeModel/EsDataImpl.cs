@@ -179,8 +179,7 @@ namespace SharpConnect.Data
         }
         public EsAttr GetAttribute(string key)
         {
-            EsAttr existing;
-            _attributeDic01.TryGetValue(key, out existing);
+            _attributeDic01.TryGetValue(key, out EsAttr existing);
             return existing;
         }
         /// <summary>

@@ -167,6 +167,21 @@ namespace SharpConnect.Data
             }
         }
 
+        bool _isSuccess;
+        bool isSuccess
+        {
+            get => _isSuccess;
+            set
+            {
+                if (!value)
+                {
+
+                }
+
+                _isSuccess = value;
+
+            }
+        }
 
         public virtual void Parse(char[] sourceBuffer)
         {
@@ -175,12 +190,13 @@ namespace SharpConnect.Data
             EsElementKind currentElementKind = EsElementKind.Unknown;
             Stack<EsElementKind> elemKindStack = new Stack<EsElementKind>();
             //--------------------------------------------------------------
+            isSuccess = true;
 
             StringBuilder myBuffer = new StringBuilder();
             //string lastestKey = "";
             ParsingState currentState = ParsingState._0_Init;
             int j = sourceBuffer.Length;
-            bool isSuccess = true;
+
             bool isInKeyPart = false;
             NumberPart numberPart = NumberPart.IntegerPart;
 
@@ -195,6 +211,7 @@ namespace SharpConnect.Data
             ValueHint currentValueHint = ValueHint.Unknown;
             for (i = 0; i < j; i++)
             {
+               
                 if (!isSuccess)
                 {
                     OnError(ref i);
@@ -816,6 +833,59 @@ namespace SharpConnect.Data
                                 NewValue(myBuffer, currentValueHint);
                                 //clear
                                 myBuffer.Length = 0;
+                                switch (currentElementKind)
+                                {
+                                    default: throw new NotSupportedException();
+                                    case EsElementKind.Array:
+                                        isInKeyPart = false;
+                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+                                        break;
+                                    case EsElementKind.Object:
+                                        isInKeyPart = true;
+                                        currentState = ParsingState._1_ObjectKey;
+                                        break;
+                                }
+                            }
+                            else if (c == '\r')
+                            {
+                                //stop here
+                                if (i < j - 1)
+                                {
+                                    if (sourceBuffer[i + 1] == '\n')
+                                    {
+                                        //\r\n
+                                        i++;
+
+                                        NewValue(myBuffer, currentValueHint);
+                                        //clear
+                                        myBuffer.Length = 0;
+
+                                        switch (currentElementKind)
+                                        {
+                                            default: throw new NotSupportedException();
+                                            case EsElementKind.Array:
+                                                isInKeyPart = false;
+                                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+                                                break;
+                                            case EsElementKind.Object:
+                                                isInKeyPart = true;
+                                                currentState = ParsingState._1_ObjectKey;
+                                                break;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        //only R
+                                    }
+                                }
+                            }
+                            else if (c == '\n')
+                            {
+                                //stop 
+                                NewValue(myBuffer, currentValueHint);
+                                //clear
+                                myBuffer.Length = 0;
+
                                 switch (currentElementKind)
                                 {
                                     default: throw new NotSupportedException();
