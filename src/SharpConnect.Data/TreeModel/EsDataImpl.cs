@@ -52,7 +52,7 @@ namespace SharpConnect.Data
         {
             Add(item);
         }
-        public IEnumerable<object> GetIterForward()
+        public IEnumerable<object> GetIter()
         {
             foreach (object obj in this)
             {

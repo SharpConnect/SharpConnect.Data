@@ -28,7 +28,7 @@ namespace SharpConnect.Data
     public interface EsArr
     {
         void AddItem(object item);
-        IEnumerable<object> GetIterForward();
+        IEnumerable<object> GetIter();
         void Clear();
         int Count { get; }
         object this[int index] { get; set; }
