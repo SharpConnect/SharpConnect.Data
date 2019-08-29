@@ -4,104 +4,81 @@ namespace SharpConnect.Data
 {
     class IndentTextWriter
     {
-        StringBuilder stBuilder;
-        int indentLevel;
-        const string defaultTabString = "\t";
-        string newLine = "\r\n";
+        StringBuilder _stBuilder;
+
+        const string TAB = "\t";
+
+
         public IndentTextWriter(StringBuilder stBuilder)
         {
-            this.stBuilder = stBuilder;
+            this._stBuilder = stBuilder;
+            NewLine = "\r\n";
         }
-        public StringBuilder InnterStringBuilder
-        {
-            get
-            {
-                return this.stBuilder;
-            }
-        }
+
+        public StringBuilder InnterStringBuilder => _stBuilder;
+
         public void Append(string str)
         {
-            stBuilder.Append(str);
+            _stBuilder.Append(str);
         }
         public void Append(char c)
         {
-            stBuilder.Append(c);
+            _stBuilder.Append(c);
         }
         public void OutputTabs()
         {
-            for (int i = 0; i < indentLevel; i++)
+            for (int i = 0; i < IndentLevel; i++)
             {
-                stBuilder.Append(defaultTabString);
+                _stBuilder.Append(TAB);
             }
         }
 
         public void CloseLine()
         {
-            stBuilder.Append(newLine);
+            _stBuilder.Append(NewLine);
             OutputTabs();
         }
 
         public void CloseLine(string str)
         {
 
-            stBuilder.Append(str);
-            stBuilder.Append(newLine);
+            _stBuilder.Append(str);
+            _stBuilder.Append(NewLine);
             OutputTabs();
         }
 
         public void CloseLineFinal(string str)
         {
-            stBuilder.Append(str);
+            _stBuilder.Append(str);
 
         }
         public void CloseLine(char c)
         {
 
-            stBuilder.Append(c);
-            stBuilder.Append(newLine);
+            _stBuilder.Append(c);
+            _stBuilder.Append(NewLine);
             OutputTabs();
         }
 
         public void CloseLineNoTab(string str)
         {
-            stBuilder.Append(str);
-            stBuilder.Append(newLine);
+            _stBuilder.Append(str);
+            _stBuilder.Append(NewLine);
         }
         public void CloseLineNoTab()
         {
-            stBuilder.Append(newLine);
+            _stBuilder.Append(NewLine);
         }
 
         public void CloseLineNoTab(char c)
         {
-            stBuilder.Append(c);
-            stBuilder.Append(newLine);
+            _stBuilder.Append(c);
+            _stBuilder.Append(NewLine);
         }
 
 
-        public string NewLine
-        {
-            get
-            {
-                return newLine;
-            }
-            set
-            {
-                newLine = value;
-            }
-        }
-
-        public int IndentLevel
-        {
-            get
-            {
-                return indentLevel;
-            }
-            set
-            {
-                indentLevel = value;
-            }
-        }
+        public string NewLine { get; set; }
+        public int IndentLevel { get; set; }
 
 
     }

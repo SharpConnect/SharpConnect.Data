@@ -78,7 +78,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Accessories\IndentTextWriter.cs" />
-    <Compile Include="Accessories\SimpleBinaryWriter.cs" />
     <Compile Include="Melt\MeltingEss.cs" />
     <Compile Include="Net20\Net20.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

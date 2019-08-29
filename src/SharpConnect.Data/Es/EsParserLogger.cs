@@ -6,29 +6,29 @@ namespace SharpConnect.Data
 #if DEBUG
     static class dbugEsParserLogger
     {
-        static FileStream dbugFs;
-        static StreamWriter writer;
+        static FileStream s_dbugFs;
+        static StreamWriter s_writer;
         public static void Init(string outputfile)
         {
-            if (writer != null)
+            if (s_writer != null)
             {
-                writer.Close();
-                writer.Dispose();
-                writer = null;
+                s_writer.Close();
+                s_writer.Dispose();
+                s_writer = null;
             }
-            if (dbugFs != null)
+            if (s_dbugFs != null)
             {
-                dbugFs.Close();
-                dbugFs = null;
+                s_dbugFs.Close();
+                s_dbugFs = null;
             }
             //-------------------------
-            dbugFs = new FileStream(outputfile, FileMode.Create);
-            writer = new StreamWriter(dbugFs);
-            writer.AutoFlush = true;
+            s_dbugFs = new FileStream(outputfile, FileMode.Create);
+            s_writer = new StreamWriter(s_dbugFs);
+            s_writer.AutoFlush = true;
         }
         public static void WriteLine(string text)
         {
-            writer.WriteLine(text);
+            s_writer.WriteLine(text);
         }
     }
 #endif

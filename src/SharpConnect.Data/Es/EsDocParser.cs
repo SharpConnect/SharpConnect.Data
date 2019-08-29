@@ -6,20 +6,15 @@ namespace SharpConnect.Data
 {
     class EaseDocParser : EsParserBase<EsElem, EsArr>
     {
-        EaseDocument easeDoc;
+        EaseDocument _easeDoc;
         public EaseDocParser(EaseDocument blankdoc)
         {
-            easeDoc = blankdoc;
-        }
-        protected override EsElem CreateElement()
-        {
-            return easeDoc.CreateElement();
+            _easeDoc = blankdoc;
         }
 
-        protected override EsArr CreateArray()
-        {
-            return easeDoc.CreateArray();
-        }
+        protected override EsElem CreateElement() => _easeDoc.CreateElement();
+
+        protected override EsArr CreateArray() => _easeDoc.CreateArray();
 
         protected override void AddElementAttribute(EsElem targetElem, string key, object value)
         {
