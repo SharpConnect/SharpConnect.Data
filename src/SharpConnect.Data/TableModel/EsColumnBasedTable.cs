@@ -1,4 +1,4 @@
-﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
+﻿//MIT, 2015-2019, brezza92, EngineKit and contributors
 
 using System;
 using System.Collections.Generic;
@@ -20,21 +20,10 @@ namespace SharpConnect.Data
             OK
         }
 
+        public int RowCount => _dataColumns[0].RowCount;
 
-        public int RowCount
-        {
-            get
-            {
-                return _dataColumns[0].RowCount;
-            }
-        }
-        public int ColumnCount
-        {
-            get
-            {
-                return _dataColumns.Count;
-            }
-        }
+        public int ColumnCount => _dataColumns.Count;
+
         public void RemoveColumn(int columnIndex)
         {
             //when user remove column or change column name
@@ -42,18 +31,12 @@ namespace SharpConnect.Data
             _dataColumns.RemoveAt(columnIndex);
             _columnNameState = ColumnNameState.Dirty;
         }
-        public string GetColumnName(int colIndex)
-        {
-            return _dataColumns[colIndex].ColumnName;
-        }
-        public object GetCellData(int row, int column)
-        {
-            return _dataColumns[column].GetCellData(row);
-        }
-        public EsTableColumn GetColumn(int index)
-        {
-            return _dataColumns[index];
-        }
+        public string GetColumnName(int colIndex) => _dataColumns[colIndex].ColumnName;
+
+        public object GetCellData(int row, int column) => _dataColumns[column].GetCellData(row);
+
+        public EsTableColumn GetColumn(int index) => _dataColumns[index];
+
         public IEnumerable<EsTableColumn> GetColumnIterForward()
         {
             foreach (EsTableColumn col in _dataColumns)
@@ -130,30 +113,17 @@ namespace SharpConnect.Data
     {
         EsColumnBasedTable _ownerTable;
         List<object> _cells = new List<object>();
-        string _name;
+         
         internal EsTableColumn(EsColumnBasedTable ownerTable, string name)
         {
             ColumnName = name;
             _ownerTable = ownerTable;
         }
-        public int RowCount
-        {
-            get
-            {
-                return _cells.Count;
-            }
-        }
+        public int RowCount => _cells.Count;
         /// <summary>
         /// TODO: review here  ***
         /// </summary>
-        public string ColumnName
-        {
-            get { return _name; }
-            set
-            {
-                _name = value;
-            }
-        }
+        public string ColumnName { get; set; }
         public void NewBlankRows(int rowCount, object initData)
         {
             for (int i = rowCount - 1; i >= 0; --i)
@@ -161,11 +131,7 @@ namespace SharpConnect.Data
                 _cells.Add(initData);
             }
         }
-        public EsColumnTypeHint TypeHint
-        {
-            get;
-            set;
-        }
+        public EsColumnTypeHint TypeHint { get; set; }
 
         public void AppendData(object data)
         {

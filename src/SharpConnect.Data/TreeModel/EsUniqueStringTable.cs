@@ -7,14 +7,15 @@ namespace SharpConnect.Data
 
     public class EsUniqueStringTable
     {
-        Dictionary<string, int> dic;
-        List<string> list;
+        Dictionary<string, int> _dic;
+        List<string> _list;
+
         public EsUniqueStringTable()
         {
-            dic = new Dictionary<string, int>();
-            list = new List<string>();
-            dic.Add(string.Empty, 0);
-            list.Add(string.Empty);
+            _dic = new Dictionary<string, int>();
+            _list = new List<string>();
+            _dic.Add(string.Empty, 0);
+            _list.Add(string.Empty);
         }
 
         public int GetStringIndex(string str)
@@ -25,7 +26,7 @@ namespace SharpConnect.Data
                 return 0;
             }
             int foundIndex;
-            if (dic.TryGetValue(str, out foundIndex))
+            if (_dic.TryGetValue(str, out foundIndex))
             {
                 return foundIndex;
             }
@@ -44,60 +45,49 @@ namespace SharpConnect.Data
             }
             //---------------------------------------
             int foundIndex;
-            if (dic.TryGetValue(str, out foundIndex))
+            if (_dic.TryGetValue(str, out foundIndex))
             {
                 return foundIndex;
             }
             else
             {
-                int index = dic.Count;
-                dic.Add(str, index);
-                list.Add(str);
+                int index = _dic.Count;
+                _dic.Add(str, index);
+                _list.Add(str);
                 return index;
             }
         }
-        public bool Contains(string str)
-        {
-            return dic.ContainsKey(str);
-        }
-        public int Count
-        {
-            get
-            {
-                return dic.Count;
-            }
-        }
-        public string GetString(int index)
-        {
-            return list[index];
-        }
+
+        public bool Contains(string str) => _dic.ContainsKey(str);
+
+        public int Count => _dic.Count;
+
+        public string GetString(int index) => _list[index];
+
         public IEnumerable<string> WordIter
         {
             get
             {
-                foreach (string str in dic.Keys)
+                foreach (string str in _dic.Keys)
                 {
                     yield return str;
                 }
             }
         }
-        public List<string> GetStringList()
-        {
-            return list;
-        }
 
+        public List<string> GetStringList() => _list;
 
         public EsUniqueStringTable Clone()
         {
             EsUniqueStringTable newClone = new EsUniqueStringTable();
-            Dictionary<string, int> cloneDic = newClone.dic;
+            Dictionary<string, int> cloneDic = newClone._dic;
             cloneDic.Clear();
-            foreach (KeyValuePair<string, int> kp in this.dic)
+            foreach (KeyValuePair<string, int> kp in _dic)
             {
                 cloneDic.Add(kp.Key, kp.Value);
             }
-            newClone.list.Clear();
-            newClone.list.AddRange(list);
+            newClone._list.Clear();
+            newClone._list.AddRange(_list);
 
             return newClone;
         }

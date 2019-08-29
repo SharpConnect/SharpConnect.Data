@@ -14,9 +14,9 @@ namespace SharpConnect.Data.Internal
         static Dictionary<Type, MyTypeInfo> _registeredDic = new Dictionary<Type, MyTypeInfo>();
         public static void Register(MyTypeInfo myTypeInfo)
         {
-            if (!_registeredDic.ContainsKey(myTypeInfo.type))
+            if (!_registeredDic.ContainsKey(myTypeInfo._type))
             {
-                _registeredDic.Add(myTypeInfo.type, myTypeInfo);
+                _registeredDic.Add(myTypeInfo._type, myTypeInfo);
             }
         }
         public static bool TryGetMyTypeInfo(Type orgType, out MyTypeInfo found)
@@ -44,8 +44,8 @@ namespace SharpConnect.Data.Internal
     public class MyTypeInfo
     {
         Dictionary<string, MyTypeMbInfo> _dic = new Dictionary<string, MyTypeMbInfo>();
-        internal readonly Type type;
-        string fullname;
+        internal readonly Type _type;
+        string _fullname;
 
         public SerializeDelegate _serDel;
         public DeserializeDelegate _deserDel;
@@ -53,15 +53,13 @@ namespace SharpConnect.Data.Internal
 
         public MyTypeInfo(string fullname, System.Type type)
         {
-            this.fullname = fullname;
-            this.type = type;
+            _fullname = fullname;
+            _type = type;
             _dic.Add("", null);
 
             GlobalRegisteredTypes.Register(this);
-
-
         }
-        public string FullName { get { return this.fullname; } }
+        public string FullName => _fullname;
         //
         public void RegisterMember(string memberName, System.Type memberRetType)
         {

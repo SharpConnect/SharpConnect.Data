@@ -1,4 +1,4 @@
-﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
+﻿//MIT, 2015-2019, brezza92, EngineKit and contributors
 
 using System;
 using System.Collections.Generic;
@@ -12,28 +12,20 @@ namespace SharpConnect.Data
         {
 
         }
-        public EsElem CreateElement(string elementName)
-        {
-            return new EaseElement(elementName, this);
-        }
-        public EsElem CreateElement()
-        {
-            return new EaseElement("", this);
-        }
-        public EsArr CreateArray()
-        {
-            return new EaseArray();
-        }
+        public EsElem CreateElement(string elementName) => new EaseElement(elementName, this);
+
+        public EsElem CreateElement() => new EaseElement("", this);
+
+        public EsArr CreateArray() => new EaseArray();
+
         public int GetStringIndex(string str)
         {
             _stringTable.TryGetValue(str, out int found);
             return found;
         }
-        public EsElem DocumentElement
-        {
-            get;
-            set;
-        }
+
+        public EsElem DocumentElement { get; set; }
+
         public EsElem Parse(string jsonstr)
         {
             return Parse(jsonstr.ToCharArray());
@@ -72,41 +64,22 @@ namespace SharpConnect.Data
     {
         //xml-like element
 
-        string _name;
+
         int _nameIndex;
         EsDoc _owner;
         List<EsElem> _childNodes;
         Dictionary<string, EsAttr> _attributeDic01 = new Dictionary<string, EsAttr>();
         public EaseElement(string elementName, EsDoc ownerdoc)
         {
-            _name = elementName;
+            Name = elementName;
             _owner = ownerdoc;
         }
-        public string Name
-        {
-            get
-            {
-                return _name;
-            }
-            set
-            {
-                _name = value;
-            }
-        }
-        public EsDoc OwnerDocument
-        {
-            get
-            {
-                return _owner;
-            }
-        }
-        public bool HasOwnerDocument
-        {
-            get
-            {
-                return _owner != null;
-            }
-        }
+        public string Name { get; set; }
+
+        public EsDoc OwnerDocument => _owner;
+
+        public bool HasOwnerDocument => _owner != null;
+
         public int ChildCount
         {
             get
@@ -121,17 +94,10 @@ namespace SharpConnect.Data
                 }
             }
         }
-        public object GetChild(int index)
-        {
-            return _childNodes[index];
-        }
-        public int NameIndex
-        {
-            get
-            {
-                return _nameIndex;
-            }
-        }
+        public object GetChild(int index) => _childNodes[index];
+
+        public int NameIndex => _nameIndex;
+
         public IEnumerable<EsAttr> GetAttributeIterForward()
         {
             if (_attributeDic01 != null)

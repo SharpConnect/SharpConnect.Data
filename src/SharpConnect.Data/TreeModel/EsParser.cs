@@ -1,4 +1,4 @@
-﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
+﻿//MIT, 2015-2019, brezza92, EngineKit and contributors
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -167,21 +167,24 @@ namespace SharpConnect.Data
             }
         }
 
+
         bool _isSuccess;
-        bool isSuccess
+        bool IsSuccess
         {
             get => _isSuccess;
             set
             {
+#if DEBUG
                 if (!value)
                 {
 
                 }
-
+#endif
                 _isSuccess = value;
-
             }
         }
+
+
 
         public virtual void Parse(char[] sourceBuffer)
         {
@@ -190,7 +193,7 @@ namespace SharpConnect.Data
             EsElementKind currentElementKind = EsElementKind.Unknown;
             Stack<EsElementKind> elemKindStack = new Stack<EsElementKind>();
             //--------------------------------------------------------------
-            isSuccess = true;
+            IsSuccess = true;
 
             StringBuilder myBuffer = new StringBuilder();
             //string lastestKey = "";
@@ -211,8 +214,8 @@ namespace SharpConnect.Data
             ValueHint currentValueHint = ValueHint.Unknown;
             for (i = 0; i < j; i++)
             {
-               
-                if (!isSuccess)
+
+                if (!IsSuccess)
                 {
                     OnError(ref i);
                     //handle the error ****
@@ -273,7 +276,7 @@ namespace SharpConnect.Data
                                             }
                                             else
                                             {
-                                                isSuccess = false;
+                                                IsSuccess = false;
                                                 NotifyError();
                                             }
                                         }
@@ -289,7 +292,7 @@ namespace SharpConnect.Data
                                         }
                                         else
                                         {
-                                            isSuccess = false;
+                                            IsSuccess = false;
                                             NotifyError();
                                         }
                                     }
@@ -319,7 +322,7 @@ namespace SharpConnect.Data
                                 if (currentElementKind != EsElementKind.Object)
                                 {
                                     NotifyError();
-                                    isSuccess = false;
+                                    IsSuccess = false;
                                 }
                                 else
                                 {
@@ -370,7 +373,7 @@ namespace SharpConnect.Data
                                     }
                                     else
                                     {
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                         NotifyError();
                                     }
                                 }
@@ -383,7 +386,7 @@ namespace SharpConnect.Data
 
                                 //number or other token will error in keypart***
                                 NotifyError();
-                                isSuccess = false;
+                                IsSuccess = false;
                                 break;
                             }
                         }
@@ -489,7 +492,7 @@ namespace SharpConnect.Data
                                         else
                                         {
                                             //error
-                                            isSuccess = false;
+                                            IsSuccess = false;
                                             NotifyError();
                                         }
                                     }
@@ -497,7 +500,7 @@ namespace SharpConnect.Data
                                 default:
                                     {
                                         NotifyError();
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                     }
                                     break;
                             }
@@ -540,7 +543,7 @@ namespace SharpConnect.Data
                                     }
                                     else
                                     {
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                         NotifyError();
                                     }
                                 }
@@ -550,7 +553,7 @@ namespace SharpConnect.Data
                             {
                                 //TODO: add recovery extension here
                                 NotifyError();
-                                isSuccess = false;
+                                IsSuccess = false;
                                 break;
                             }
                         }
@@ -599,7 +602,7 @@ namespace SharpConnect.Data
                                 if (currentElementKind != EsElementKind.Array)
                                 {
                                     NotifyError();
-                                    isSuccess = false;
+                                    IsSuccess = false;
                                 }
                                 else
                                 {
@@ -635,7 +638,7 @@ namespace SharpConnect.Data
                                     }
                                     else
                                     {
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                         NotifyError();
                                     }
                                 }
@@ -728,7 +731,7 @@ namespace SharpConnect.Data
                                             }
                                             else
                                             {
-                                                isSuccess = false;
+                                                IsSuccess = false;
                                                 NotifyError();
                                             }
                                         }
@@ -765,7 +768,7 @@ namespace SharpConnect.Data
                                 else
                                 {
                                     NotifyError();
-                                    isSuccess = false;
+                                    IsSuccess = false;
                                     break;
                                 }
                             }
@@ -784,7 +787,7 @@ namespace SharpConnect.Data
                                         break;
                                     default:
                                         NotifyError();
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                         break;
                                 }
                             }
@@ -798,7 +801,7 @@ namespace SharpConnect.Data
                                         break;
                                     default:
                                         NotifyError();
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                         break;
                                 }
                             }
@@ -902,7 +905,7 @@ namespace SharpConnect.Data
                             else
                             {
 
-                                isSuccess = false;
+                                IsSuccess = false;
                                 NotifyError();
                             }
                         }
@@ -925,14 +928,14 @@ namespace SharpConnect.Data
                                     else
                                     {
                                         NotifyError();
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                     }
                                     break;
                                 case '}':
                                     if (isInKeyPart)
                                     {
                                         NotifyError();
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                     }
                                     else
                                     {
@@ -951,7 +954,7 @@ namespace SharpConnect.Data
                                     if (isInKeyPart)
                                     {
                                         NotifyError();
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                     }
                                     else
                                     {
@@ -971,7 +974,7 @@ namespace SharpConnect.Data
                                     if (isInKeyPart)
                                     {
                                         NotifyError();
-                                        isSuccess = false;
+                                        IsSuccess = false;
                                     }
                                     else
                                     {
@@ -1060,11 +1063,10 @@ namespace SharpConnect.Data
             Array
         }
 
-        Stack<string> keyStack = new Stack<string>();
-        Stack<object> elemStack = new Stack<object>();
-        object currentElem = null;
-        string currentKey = null;
-
+        Stack<string> _keyStack = new Stack<string>();
+        Stack<object> _elemStack = new Stack<object>();
+        object _currentElem = null;
+        string _currentKey = null;
 
         public EsParserBase()
         {
@@ -1081,39 +1083,39 @@ namespace SharpConnect.Data
         }
         protected override void BeginObject()
         {
-            if (currentKey != null)
+            if (_currentKey != null)
             {
-                keyStack.Push(currentKey);
+                _keyStack.Push(_currentKey);
             }
-            currentKey = null;
-            if (currentElem != null)
+            _currentKey = null;
+            if (_currentElem != null)
             {
-                elemStack.Push(currentElem);
+                _elemStack.Push(_currentElem);
             }
-            currentElem = CreateElement();
+            _currentElem = CreateElement();
         }
         void InternalPopCurrentObjectAndPushToPrevContext()
         {
             //current element should be object
-            object c_object = currentElem;
-            if (elemStack.Count > 0)
+            object c_object = _currentElem;
+            if (_elemStack.Count > 0)
             {
                 //pop from stack
-                currentElem = elemStack.Pop();
-                currentKey = null;
-                if (c_object == currentElem)
+                _currentElem = _elemStack.Pop();
+                _currentKey = null;
+                if (c_object == _currentElem)
                 {
                     throw new System.Exception();
                 }
 
                 E c_elem = null;
                 A c_arr = null;
-                if ((c_elem = currentElem as E) != null)
+                if ((c_elem = _currentElem as E) != null)
                 {
-                    currentKey = keyStack.Pop();
-                    AddElementAttribute(c_elem, currentKey, c_object);
+                    _currentKey = _keyStack.Pop();
+                    AddElementAttribute(c_elem, _currentKey, c_object);
                 }
-                else if ((c_arr = currentElem as A) != null)
+                else if ((c_arr = _currentElem as A) != null)
                 {
                     AddArrayElement(c_arr, c_object);
                 }
@@ -1129,16 +1131,16 @@ namespace SharpConnect.Data
         }
         protected override void BeginArray()
         {
-            if (currentKey != null)
+            if (_currentKey != null)
             {
-                keyStack.Push(currentKey);
+                _keyStack.Push(_currentKey);
             }
-            currentKey = null;
-            if (currentElem != null)
+            _currentKey = null;
+            if (_currentElem != null)
             {
-                elemStack.Push(currentElem);
+                _elemStack.Push(_currentElem);
             }
-            currentElem = CreateArray();
+            _currentElem = CreateArray();
         }
         protected override void EndArray()
         {
@@ -1150,7 +1152,7 @@ namespace SharpConnect.Data
         }
         protected override void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
         {
-            currentKey = tmpBuffer.ToString();
+            _currentKey = tmpBuffer.ToString();
         }
         protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
         {
@@ -1194,11 +1196,11 @@ namespace SharpConnect.Data
 
             E c_elem = null;
             A c_arr = null;
-            if ((c_elem = currentElem as E) != null)
+            if ((c_elem = _currentElem as E) != null)
             {
-                AddElementAttribute(c_elem, currentKey, c_object);
+                AddElementAttribute(c_elem, _currentKey, c_object);
             }
-            else if ((c_arr = currentElem as A) != null)
+            else if ((c_arr = _currentElem as A) != null)
             {
                 AddArrayElement(c_arr, c_object);
             }
@@ -1216,6 +1218,6 @@ namespace SharpConnect.Data
         {
             base.OnError(ref currentIndex);
         }
-        public object CurrentElement { get { return currentElem; } }
+        public object CurrentElement => _currentElem;
     }
 }
