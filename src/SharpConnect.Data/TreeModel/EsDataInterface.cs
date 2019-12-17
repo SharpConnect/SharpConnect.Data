@@ -5,25 +5,25 @@ namespace SharpConnect.Data
     public interface EsElem
     {
         string Name { get; set; }
-        EsDoc OwnerDocument { get; }
-        bool HasOwnerDocument { get; }
-        int NameIndex { get; }
+        //EsDoc OwnerDocument { get; }
+        //bool HasOwnerDocument { get; }
+        //int NameIndex { get; }
         IEnumerable<EsAttr> GetAttributeIterForward();
-        void RemoveAttribute(EsAttr attr);
+        void RemoveAttribute(string key);
         void AppendChild(EsElem element);
-        void AppendAttribute(EsAttr attr);
-        EsAttr AppendAttribute(string key, object value);
+        //void AppendAttribute(EsAttr attr);
+        void AppendAttribute(string key, object value);
         object GetAttributeValue(string key);
-        EsAttr GetAttribute(string key);
+        //EsAttr GetAttribute(string key);
         int ChildCount { get; }
         object GetChild(int index);
-        object this[string attrName] { get; set; }
+        //object this[string attrName] { get; set; }
     }
     public interface EsAttr
     {
-        string Name { get; set; }
-        object Value { get; set; }
-        int AttributeLocalNameIndex { get; }
+        string Name { get; }
+        object Value { get; }
+        //int AttributeLocalNameIndex { get; }
     }
     public interface EsArr
     {

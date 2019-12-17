@@ -10,12 +10,11 @@ namespace SharpConnect.Data
     public static class EsColumnBasedTableHelper
     {
         public static Encoding s_defaultEncoding = Encoding.UTF8;
-        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc, bool firstRowIsColumns)
+        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(Stream stream, Encoding enc, bool firstRowIsColumns)
         {
             var table = new EsColumnBasedTable();
-            using (var fs = new FileStream(file, FileMode.Open))
+            using (var reader = new StreamReader(stream, enc))
             {
-                var reader = new StreamReader(fs, enc);
                 int line_id = 0;
                 int col_count = 0;
                 EsTableColumn[] columns = null;
@@ -64,9 +63,15 @@ namespace SharpConnect.Data
                     line = reader.ReadLine();
                 }
                 reader.Close();
-                fs.Close();
             }
             return table;
+        }
+        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(string file, Encoding enc, bool firstRowIsColumns)
+        {
+            using (var fs = new FileStream(file, FileMode.Open))
+            {
+                return CreateColumnBaseTableFromCsv(fs, enc, firstRowIsColumns);
+            }
         }
 
         static string[] ParseCsvLine(string csvline)

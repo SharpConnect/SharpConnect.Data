@@ -1,7 +1,5 @@
 ﻿//MIT, 2015-2019, brezza92, EngineKit and contributors
 
-using System;
-
 namespace SharpConnect.Data
 {
     class EaseDocParser : EsParserBase<EsElem, EsArr>
@@ -18,7 +16,7 @@ namespace SharpConnect.Data
 
         protected override void AddElementAttribute(EsElem targetElem, string key, object value)
         {
-            targetElem[key] = value;
+            targetElem.AppendAttribute(key, value);             
         }
 
         protected override void AddArrayElement(EsArr targetArray, object value)

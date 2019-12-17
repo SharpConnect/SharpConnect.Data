@@ -1125,14 +1125,10 @@ namespace SharpConnect.Data
 
         Dictionary<string, object> _rootObject;
         Dictionary<string, object>.Enumerator _objEnum;
-        KeyValuePair<string, object> _currentValue;
-        int level = 0;
-
-
+        KeyValuePair<string, object> _currentValue; 
         public void SetRootObject(Dictionary<string, object> rootObject)
         {
             _rootObject = rootObject;
-            level = 0;
             _objEnum = rootObject.GetEnumerator();
         }
 
