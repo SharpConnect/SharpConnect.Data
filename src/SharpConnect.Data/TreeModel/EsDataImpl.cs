@@ -12,9 +12,14 @@ namespace SharpConnect.Data
         {
 
         }
-        public EsElem CreateElement(string elementName) => new EaseElement(elementName);
+        public EsElem CreateElement(string elementName)
+        {
+            var elem = new EaseElement();
+            elem.Name = elementName;
+            return elem;
+        }
 
-        public EsElem CreateElement() => new EaseElement("");
+        public EsElem CreateElement() => new EaseElement();
 
         public EsArr CreateArray() => new EaseArray();
 
@@ -44,7 +49,9 @@ namespace SharpConnect.Data
     {
         public static EsElem CreateXmlElementForDynamicObject(EsDoc doc)
         {
-            return new EaseElement("!j");
+            var elem = new EaseElement();
+            elem.Name = "!j";
+            return elem;
         }
     }
     class EaseArray : EsArr
@@ -84,31 +91,32 @@ namespace SharpConnect.Data
         //EsDoc _owner;
         List<EsElem> _childNodes;
         Dictionary<string, object> _attrs = new Dictionary<string, object>();
-        public EaseElement(string elementName)
+        public EaseElement()
         {
-            Name = elementName;
-
+            Name = "";
         }
+
         public string Name { get; set; }
 
         //public EsDoc OwnerDocument => _owner;
 
         //public bool HasOwnerDocument => _owner != null;
 
-        public int ChildCount
-        {
-            get
-            {
-                if (_childNodes == null)
-                {
-                    return 0;
-                }
-                else
-                {
-                    return _childNodes.Count;
-                }
-            }
-        }
+        public int ChildCount => (_childNodes == null) ? 0 : _childNodes.Count;
+
+        //{
+        //    get
+        //    {
+        //        if (_childNodes == null)
+        //        {
+        //            return 0;
+        //        }
+        //        else
+        //        {
+        //            return _childNodes.Count;
+        //        }
+        //    }
+        //}
         public object GetChild(int index) => _childNodes[index];
 
         //public int NameIndex => _nameIndex;
@@ -135,15 +143,10 @@ namespace SharpConnect.Data
         {
             _attrs.Remove(key);
         }
-        //public void AppendAttribute(EsAttr attr)
-        //{
-        //    _attributeDic01.Add(attr.Name, attr);
-        //}
+
         public void AppendAttribute(string key, object value)
         {
-            //var attr = new EaseAttribute(key, value);
             _attrs.Add(key, value);
-            //return attr;
         }
 
         public object GetAttributeValue(string key)

@@ -14,8 +14,8 @@ namespace SharpConnect.Data
         {
             _dic = new Dictionary<string, int>();
             _list = new List<string>();
-            _dic.Add(string.Empty, 0);
-            _list.Add(string.Empty);
+            _dic.Add("", 0);
+            _list.Add("");
         }
 
         public int GetStringIndex(string str)
