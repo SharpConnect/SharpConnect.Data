@@ -292,6 +292,7 @@ namespace SharpConnect.Data
         {
             return esElem.GetAttributeValue(attrName) as EsElem;
         }
+
         //-----------------------------------------------------------------------
         public static void WriteJson(this EsDoc doc, StringBuilder stBuilder)
         {
@@ -406,6 +407,8 @@ namespace SharpConnect.Data
             else if (elem is string)
             {
                 stBuilder.Append('"');
+                //TODO: proper escape json string
+                //ensure we scape " inside this string
                 stBuilder.Append((string)elem);
                 stBuilder.Append('"');
             }
@@ -417,11 +420,11 @@ namespace SharpConnect.Data
                 //TODO: review all primitive conversion
                 stBuilder.Append(elem.ToString());
             }
-            else if (elem is Array)
+            else if (elem is Array a)
             {
                 stBuilder.Append('[');
                 //write element into array
-                Array a = elem as Array;
+
                 int j = a.Length;
                 for (int i = 0; i < j; ++i)
                 {
@@ -433,23 +436,27 @@ namespace SharpConnect.Data
                 }
                 stBuilder.Append(']');
             }
-            else if (elem is EaseElement)
+            else if (elem is EaseElement ease_elem)
             {
-                WriteJson((EsElem)elem, stBuilder);
+                WriteJson(ease_elem, stBuilder);
             }
-            else if (elem is EsArr)
+            else if (elem is EsArr es_arr)
             {
-                WriteJson((EsArr)elem, stBuilder);
+                WriteJson(es_arr, stBuilder);
             }
-            else if (elem is DateTime)
+            else if (elem is DateTime d)
             {
                 //write datetime as string
                 stBuilder.Append('"');
-                stBuilder.Append(string.Format("{0:u}", (DateTime)elem));
+                stBuilder.Append(string.Format("{0:u}", d));
                 stBuilder.Append('"');
             }
             else
             {
+                //get if we 
+                Type elemType = elem.GetType();
+                //find codec of this type
+
                 stBuilder.Append(elem.ToString());
                 //throw new NotSupportedException();
             }
