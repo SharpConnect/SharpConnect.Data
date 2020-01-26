@@ -1,4 +1,4 @@
-﻿//MIT, 2015-2016, brezza92, EngineKit and contributors
+﻿//MIT, 2015-2019, brezza92, EngineKit and contributors
 
 using System;
 using System.Collections.Generic;
@@ -7,33 +7,30 @@ namespace SharpConnect.Data
 {
     public class EaseDocument : EsDoc
     {
-        Dictionary<string, int> _stringTable = new Dictionary<string, int>();
+        //Dictionary<string, int> _stringTable = new Dictionary<string, int>();
         public EaseDocument()
         {
 
         }
         public EsElem CreateElement(string elementName)
         {
-            return new EaseElement(elementName, this);
+            var elem = new EaseElement();
+            elem.Name = elementName;
+            return elem;
         }
-        public EsElem CreateElement()
-        {
-            return new EaseElement("", this);
-        }
-        public EsArr CreateArray()
-        {
-            return new EaseArray();
-        }
-        public int GetStringIndex(string str)
-        {
-            _stringTable.TryGetValue(str, out int found);
-            return found;
-        }
-        public EsElem DocumentElement
-        {
-            get;
-            set;
-        }
+
+        public EsElem CreateElement() => new EaseElement();
+
+        public EsArr CreateArray() => new EaseArray();
+
+        //public int GetStringIndex(string str)
+        //{
+        //    _stringTable.TryGetValue(str, out int found);
+        //    return found;
+        //}
+
+        public EsElem DocumentElement { get; set; }
+
         public EsElem Parse(string jsonstr)
         {
             return Parse(jsonstr.ToCharArray());
@@ -44,101 +41,93 @@ namespace SharpConnect.Data
             parser.Parse(jsonstr);
             return parser.CurrentElement as EsElem;
         }
+        public EsAttr CreateAttribute(string key, object value) => new EaseAttribute(key, value);
     }
 
-    class EaseArray : List<object>, EsArr
+
+    static class EsElemHelper
     {
+        public static EsElem CreateXmlElementForDynamicObject(EsDoc doc)
+        {
+            var elem = new EaseElement();
+            elem.Name = "!j";
+            return elem;
+        }
+    }
+    class EaseArray : EsArr
+    {
+        List<object> _member = new List<object>();
+
+        public object this[int index]
+        {
+            get => _member[index];
+            set => _member[index] = value;
+        }
+
+        public int Count => _member.Count;
+
         public void AddItem(object item)
         {
-            Add(item);
+            _member.Add(item);
         }
+
+        public void Clear()
+        {
+            _member.Clear();
+        }
+
         public IEnumerable<object> GetIter()
         {
-            foreach (object obj in this)
+            foreach (object obj in _member)
             {
                 yield return obj;
             }
         }
     }
-    static class EsElemHelper
-    {
-        public static EsElem CreateXmlElementForDynamicObject(EsDoc doc)
-        {
-            return new EaseElement("!j", null);
-        }
-    }
-
     class EaseElement : EsElem
     {
         //xml-like element
-
-        string _name;
-        int _nameIndex;
-        EsDoc _owner;
+        //int _nameIndex;
+        //EsDoc _owner;
         List<EsElem> _childNodes;
-        Dictionary<string, EsAttr> _attributeDic01 = new Dictionary<string, EsAttr>();
-        public EaseElement(string elementName, EsDoc ownerdoc)
+        Dictionary<string, object> _attrs = new Dictionary<string, object>();
+        public EaseElement()
         {
-            _name = elementName;
-            _owner = ownerdoc;
+            Name = "";
         }
-        public string Name
-        {
-            get
-            {
-                return _name;
-            }
-            set
-            {
-                _name = value;
-            }
-        }
-        public EsDoc OwnerDocument
-        {
-            get
-            {
-                return _owner;
-            }
-        }
-        public bool HasOwnerDocument
-        {
-            get
-            {
-                return _owner != null;
-            }
-        }
-        public int ChildCount
-        {
-            get
-            {
-                if (_childNodes == null)
-                {
-                    return 0;
-                }
-                else
-                {
-                    return _childNodes.Count;
-                }
-            }
-        }
-        public object GetChild(int index)
-        {
-            return _childNodes[index];
-        }
-        public int NameIndex
-        {
-            get
-            {
-                return _nameIndex;
-            }
-        }
+
+        public string Name { get; set; }
+
+        //public EsDoc OwnerDocument => _owner;
+
+        //public bool HasOwnerDocument => _owner != null;
+
+        public int ChildCount => (_childNodes == null) ? 0 : _childNodes.Count;
+
+        //{
+        //    get
+        //    {
+        //        if (_childNodes == null)
+        //        {
+        //            return 0;
+        //        }
+        //        else
+        //        {
+        //            return _childNodes.Count;
+        //        }
+        //    }
+        //}
+        public object GetChild(int index) => _childNodes[index];
+
+        //public int NameIndex => _nameIndex;
+
         public IEnumerable<EsAttr> GetAttributeIterForward()
         {
-            if (_attributeDic01 != null)
+            if (_attrs != null)
             {
-                foreach (EsAttr attr in _attributeDic01.Values)
+                foreach (var kv in _attrs)
                 {
-                    yield return attr;
+                    yield return new EaseAttribute(kv.Key, kv.Value);
                 }
             }
         }
@@ -150,80 +139,81 @@ namespace SharpConnect.Data
             }
             _childNodes.Add(element);
         }
-        public void RemoveAttribute(EsAttr attr)
+        public void RemoveAttribute(string key)
         {
-            _attributeDic01.Remove(attr.Name);
+            _attrs.Remove(key);
         }
-        public void AppendAttribute(EsAttr attr)
+
+        public void AppendAttribute(string key, object value)
         {
-            _attributeDic01.Add(attr.Name, attr);
-        }
-        public EsAttr AppendAttribute(string key, object value)
-        {
-            var attr = new EaseAttribute(key, value);
-            _attributeDic01.Add(key, attr);
-            return attr;
+            _attrs.Add(key, value);
         }
 
         public object GetAttributeValue(string key)
         {
-            EsAttr found = GetAttribute(key);
-            if (found != null)
+            if (_attrs.TryGetValue(key, out object value))
             {
-                return found.Value;
+                return value;
             }
-            else
-            {
-                return null;
-            }
+            return null;
+
+            //EsAttr found = GetAttribute(key);
+            //if (found != null)
+            //{
+            //    return found.Value;
+            //}
+            //else
+            //{
+            //    return null;
+            //}
         }
-        public EsAttr GetAttribute(string key)
-        {
-            _attributeDic01.TryGetValue(key, out EsAttr existing);
-            return existing;
-        }
-        /// <summary>
-        /// get attribute value if exist / set=> insert or replace existing value with specific value
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        public object this[string key]
-        {
-            get
-            {
-                EsAttr found = GetAttribute(key);
-                if (found == null)
-                {
-                    return null;
-                }
-                else
-                {
-                    return found.Value;
-                }
-            }
-            set
-            {
-                //replace value if existing
-                //we create new attr and replace it
-                //so it not affect existing attr
-                _attributeDic01[key] = new EaseAttribute(key, value);
-            }
-        }
+        //public EsAttr GetAttribute(string key)
+        //{
+        //    _attributeDic01.TryGetValue(key, out EsAttr existing);
+        //    return existing;
+        //}
+        ///// <summary>
+        ///// get attribute value if exist / set=> insert or replace existing value with specific value
+        ///// </summary>
+        ///// <param name="key"></param>
+        ///// <returns></returns>
+        //public object this[string key]
+        //{
+        //    get
+        //    {
+        //        EsAttr found = GetAttribute(key);
+        //        if (found == null)
+        //        {
+        //            return null;
+        //        }
+        //        else
+        //        {
+        //            return found.Value;
+        //        }
+        //    }
+        //    set
+        //    {
+        //        //replace value if existing
+        //        //we create new attr and replace it
+        //        //so it not affect existing attr
+        //        _attributeDic01[key] = new EaseAttribute(key, value);
+        //    }
+        //}
     }
     class EaseAttribute : EsAttr
     {
-        int _localNameIndex;
-        public EaseAttribute()
-        {
-        }
+        //int _localNameIndex;
+        //public EaseAttribute()
+        //{
+        //}
         public EaseAttribute(string name, object value)
         {
             Name = name;
             Value = value;
         }
-        public string Name { get; set; }
-        public object Value { get; set; }
-        public int AttributeLocalNameIndex => _localNameIndex;
+        public string Name { get; private set; }
+        public object Value { get; }
+        //public int AttributeLocalNameIndex => _localNameIndex;
         public override string ToString() => Name + ":" + Value;
     }
 
@@ -302,6 +292,7 @@ namespace SharpConnect.Data
         {
             return esElem.GetAttributeValue(attrName) as EsElem;
         }
+
         //-----------------------------------------------------------------------
         public static void WriteJson(this EsDoc doc, StringBuilder stBuilder)
         {
@@ -332,7 +323,7 @@ namespace SharpConnect.Data
             EaseElement leqE = (EaseElement)esElem;
             stBuilder.Append('{');
             //check docattr= 
-            var nameAttr = leqE.GetAttribute("!n");
+            var nameAttr = leqE.GetAttributeValueAsString("!n");
             int attrCount = 0;
             if (nameAttr == null)
             {
@@ -416,6 +407,8 @@ namespace SharpConnect.Data
             else if (elem is string)
             {
                 stBuilder.Append('"');
+                //TODO: proper escape json string
+                //ensure we scape " inside this string
                 stBuilder.Append((string)elem);
                 stBuilder.Append('"');
             }
@@ -427,11 +420,11 @@ namespace SharpConnect.Data
                 //TODO: review all primitive conversion
                 stBuilder.Append(elem.ToString());
             }
-            else if (elem is Array)
+            else if (elem is Array a)
             {
                 stBuilder.Append('[');
                 //write element into array
-                Array a = elem as Array;
+
                 int j = a.Length;
                 for (int i = 0; i < j; ++i)
                 {
@@ -443,23 +436,27 @@ namespace SharpConnect.Data
                 }
                 stBuilder.Append(']');
             }
-            else if (elem is EaseElement)
+            else if (elem is EaseElement ease_elem)
             {
-                WriteJson((EsElem)elem, stBuilder);
+                WriteJson(ease_elem, stBuilder);
             }
-            else if (elem is EsArr)
+            else if (elem is EsArr es_arr)
             {
-                WriteJson((EsArr)elem, stBuilder);
+                WriteJson(es_arr, stBuilder);
             }
-            else if (elem is DateTime)
+            else if (elem is DateTime d)
             {
                 //write datetime as string
                 stBuilder.Append('"');
-                stBuilder.Append(string.Format("{0:u}", (DateTime)elem));
+                stBuilder.Append(string.Format("{0:u}", d));
                 stBuilder.Append('"');
             }
             else
             {
+                //get if we 
+                Type elemType = elem.GetType();
+                //find codec of this type
+
                 stBuilder.Append(elem.ToString());
                 //throw new NotSupportedException();
             }
