@@ -1,4 +1,4 @@
-﻿//MIT, 2018, EngineKit
+﻿//MIT, 2018-presnet, EngineKit
 using System;
 using System.Text;
 using System.Collections;
