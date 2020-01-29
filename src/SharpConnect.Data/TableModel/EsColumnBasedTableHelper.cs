@@ -10,7 +10,7 @@ namespace SharpConnect.Data
     public static class EsColumnBasedTableHelper
     {
         public static Encoding s_defaultEncoding = Encoding.UTF8;
-        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(Stream stream, Encoding enc, bool firstRowIsColumns)
+        public static EsColumnBasedTable CreateColumnBaseTableFromCsv(Stream stream, Encoding enc, bool firstRowIsColumns, char sep = ',')
         {
             var table = new EsColumnBasedTable();
             using (var reader = new StreamReader(stream, enc))
@@ -22,7 +22,7 @@ namespace SharpConnect.Data
                 if (!firstRowIsColumns)
                 {
                     //when first line is not column 
-                    string[] cells = ParseCsvLine(firstline);
+                    string[] cells = ParseCsvLine(firstline, sep);
                     col_count = cells.Length;
                     columns = new EsTableColumn[col_count];
                     for (int i = 0; i < col_count; ++i)
@@ -37,7 +37,7 @@ namespace SharpConnect.Data
                 else
                 {
 
-                    string[] col_names = ParseCsvLine(firstline);
+                    string[] col_names = ParseCsvLine(firstline, sep);
                     col_count = col_names.Length;
                     columns = new EsTableColumn[col_count];
                     for (int i = 0; i < col_count; ++i)
@@ -49,7 +49,7 @@ namespace SharpConnect.Data
                 string line = reader.ReadLine();
                 while (line != null)
                 {
-                    string[] cells = ParseCsvLine(line);
+                    string[] cells = ParseCsvLine(line,sep);
                     if (cells.Length != col_count)
                     {
                         throw new NotSupportedException("column count not match!");
@@ -74,7 +74,7 @@ namespace SharpConnect.Data
             }
         }
 
-        static string[] ParseCsvLine(string csvline)
+        static string[] ParseCsvLine(string csvline, char sep)
         {
             char[] buffer = csvline.ToCharArray();
             List<string> output = new List<string>();
@@ -93,7 +93,7 @@ namespace SharpConnect.Data
                             {
                                 state = 1;
                             }
-                            else if (c == ',')
+                            else if (c == sep)
                             {
                                 output.Add(new string(currentBuffer.ToArray()));
                                 currentBuffer.Clear();
@@ -119,7 +119,7 @@ namespace SharpConnect.Data
                         break;
                     case 2:
                         {
-                            if (c == ',')
+                            if (c == sep)
                             {
                                 output.Add(new string(currentBuffer.ToArray()));
                                 currentBuffer.Clear();
