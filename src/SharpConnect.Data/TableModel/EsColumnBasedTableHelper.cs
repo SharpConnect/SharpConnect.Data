@@ -49,7 +49,7 @@ namespace SharpConnect.Data
                 string line = reader.ReadLine();
                 while (line != null)
                 {
-                    string[] cells = ParseCsvLine(line,sep);
+                    string[] cells = ParseCsvLine(line, sep);
                     if (cells.Length != col_count)
                     {
                         throw new NotSupportedException("column count not match!");
@@ -74,7 +74,7 @@ namespace SharpConnect.Data
             }
         }
 
-        static string[] ParseCsvLine(string csvline, char sep)
+        public static string[] ParseCsvLine(string csvline, char sep)
         {
             char[] buffer = csvline.ToCharArray();
             List<string> output = new List<string>();
@@ -197,9 +197,12 @@ namespace SharpConnect.Data
                             w.Write(',');
                         }
                         object cell = table.GetCellData(r, c);
-                        w.Write('"');
-                        w.Write(cell.ToString());
-                        w.Write('"');
+                        if (cell != null)
+                        {
+                            w.Write('"');
+                            w.Write(cell.ToString());
+                            w.Write('"');
+                        }
                     }
                 }
 

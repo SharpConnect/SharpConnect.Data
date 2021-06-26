@@ -113,7 +113,7 @@ namespace SharpConnect.Data
     {
         EsColumnBasedTable _ownerTable;
         List<object> _cells = new List<object>();
-         
+
         internal EsTableColumn(EsColumnBasedTable ownerTable, string name)
         {
             ColumnName = name;
@@ -157,7 +157,9 @@ namespace SharpConnect.Data
             }
             return -1;
         }
-
+#if DEBUG
+        public override string ToString() => ColumnName;
+#endif
         public static void CloneAllCells(EsTableColumn origin, EsTableColumn target)
         {
             target._cells.AddRange(origin._cells);

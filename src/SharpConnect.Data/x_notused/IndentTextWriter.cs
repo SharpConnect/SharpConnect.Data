@@ -1,4 +1,4 @@
-﻿////MIT, 2016-2017, EngineKit
+﻿////MIT, 2016-present, EngineKit
 //using System.Text;
 //namespace SharpConnect.Data
 //{
@@ -11,7 +11,7 @@
 
 //        public IndentTextWriter(StringBuilder stBuilder)
 //        {
-//            this._stBuilder = stBuilder;
+//            _stBuilder = stBuilder;
 //            NewLine = "\r\n";
 //        }
 
