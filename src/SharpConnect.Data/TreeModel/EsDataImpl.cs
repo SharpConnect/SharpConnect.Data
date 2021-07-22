@@ -84,53 +84,33 @@ namespace SharpConnect.Data
             }
         }
     }
+
     class EaseElement : EsElem
     {
-        //xml-like element
-        //int _nameIndex;
-        //EsDoc _owner;
         List<EsElem> _childNodes;
-        Dictionary<string, object> _attrs = new Dictionary<string, object>();
+
+        Dictionary<string, int> _attrs = new Dictionary<string, int>();
+        List<EaseAttribute> _attrsValues = new List<EaseAttribute>();
+
         public EaseElement()
         {
             Name = "";
         }
-
         public string Name { get; set; }
-
-        //public EsDoc OwnerDocument => _owner;
-
-        //public bool HasOwnerDocument => _owner != null;
-
+        public int AttributeCount => _attrs.Count;
         public int ChildCount => (_childNodes == null) ? 0 : _childNodes.Count;
-
-        //{
-        //    get
-        //    {
-        //        if (_childNodes == null)
-        //        {
-        //            return 0;
-        //        }
-        //        else
-        //        {
-        //            return _childNodes.Count;
-        //        }
-        //    }
-        //}
         public object GetChild(int index) => _childNodes[index];
-
-        //public int NameIndex => _nameIndex;
-
         public IEnumerable<EsAttr> GetAttributeIterForward()
         {
-            if (_attrs != null)
+            if (_attrsValues != null)
             {
-                foreach (var kv in _attrs)
+                foreach (EaseAttribute kv in _attrsValues)
                 {
-                    yield return new EaseAttribute(kv.Key, kv.Value);
+                    yield return kv;
                 }
             }
         }
+
         public void AppendChild(EsElem element)
         {
             if (_childNodes == null)
@@ -141,79 +121,60 @@ namespace SharpConnect.Data
         }
         public void RemoveAttribute(string key)
         {
-            _attrs.Remove(key);
+            if (_attrs.TryGetValue(key, out int index))
+            {
+                _attrs.Remove(key);
+                _attrsValues.RemoveAt(index);
+            }
         }
 
         public void AppendAttribute(string key, object value)
         {
-            _attrs.Add(key, value);
+            //check unique key
+            if (!_attrs.TryGetValue(key, out int index))
+            {
+                _attrs.Add(key, _attrsValues.Count);
+                _attrsValues.Add(new EaseAttribute(key, value));
+            }
+            else
+            {
+                throw new Exception("duplicated key");
+            }
         }
+
 
         public object GetAttributeValue(string key)
         {
-            if (_attrs.TryGetValue(key, out object value))
+            if (_attrs.TryGetValue(key, out int index))
             {
-                return value;
+                return _attrsValues[index].Value;
             }
             return null;
-
-            //EsAttr found = GetAttribute(key);
-            //if (found != null)
-            //{
-            //    return found.Value;
-            //}
-            //else
-            //{
-            //    return null;
-            //}
         }
-        //public EsAttr GetAttribute(string key)
-        //{
-        //    _attributeDic01.TryGetValue(key, out EsAttr existing);
-        //    return existing;
-        //}
-        ///// <summary>
-        ///// get attribute value if exist / set=> insert or replace existing value with specific value
-        ///// </summary>
-        ///// <param name="key"></param>
-        ///// <returns></returns>
-        //public object this[string key]
-        //{
-        //    get
-        //    {
-        //        EsAttr found = GetAttribute(key);
-        //        if (found == null)
-        //        {
-        //            return null;
-        //        }
-        //        else
-        //        {
-        //            return found.Value;
-        //        }
-        //    }
-        //    set
-        //    {
-        //        //replace value if existing
-        //        //we create new attr and replace it
-        //        //so it not affect existing attr
-        //        _attributeDic01[key] = new EaseAttribute(key, value);
-        //    }
-        //}
+        public EsAttr GetAttribute(int index)
+        {
+            return _attrsValues[index];
+        }
+
+        public EsAttr GetAttribute(string key)
+        {
+            if (_attrs.TryGetValue(key, out int index))
+            {
+                return _attrsValues[index];
+            }
+            return null;
+        }
     }
+
     class EaseAttribute : EsAttr
     {
-        //int _localNameIndex;
-        //public EaseAttribute()
-        //{
-        //}
         public EaseAttribute(string name, object value)
         {
             Name = name;
             Value = value;
         }
-        public string Name { get; private set; }
+        public string Name { get; }
         public object Value { get; }
-        //public int AttributeLocalNameIndex => _localNameIndex;
         public override string ToString() => Name + ":" + Value;
     }
 
@@ -461,10 +422,6 @@ namespace SharpConnect.Data
                 //throw new NotSupportedException();
             }
         }
-        //-----------------------------------------------------------------------
-        public static void WriteXml(this EsDoc doc, StringBuilder stbuiolder)
-        {
-            throw new NotSupportedException();
-        }
+       
     }
 }
