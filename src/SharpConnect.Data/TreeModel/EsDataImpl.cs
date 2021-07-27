@@ -164,6 +164,7 @@ namespace SharpConnect.Data
             }
             return null;
         }
+        public object UserData { get; set; }
     }
 
     class EaseAttribute : EsAttr
@@ -255,36 +256,37 @@ namespace SharpConnect.Data
         }
 
         //-----------------------------------------------------------------------
-        public static void WriteJson(this EsDoc doc, StringBuilder stBuilder)
+        public static void WriteJson(this EsDoc doc, StringBuilder sb)
         {
             //write to 
             var docElem = doc.DocumentElement;
             if (docElem != null)
             {
-                WriteJson(docElem, stBuilder);
+                WriteJson(docElem, sb);
             }
         }
 
-        static void WriteJson(EsArr esArr, StringBuilder stBuilder)
+        static void WriteJson(EsArr esArr, StringBuilder sb)
         {
-            stBuilder.Append('[');
+            sb.Append('[');
             int j = esArr.Count;
             for (int i = 0; i < j; ++i)
             {
                 if (i > 0)
                 {
-                    stBuilder.Append(',');
+                    sb.Append(',');
                 }
-                WriteJson(esArr[i], stBuilder);
+                WriteJson(esArr[i], sb);
             }
-            stBuilder.Append(']');
+            sb.Append(']');
         }
-        public static void WriteJson(this EsElem esElem, StringBuilder stBuilder)
+
+        public static void WriteJson(this EsElem esElem, StringBuilder sb)
         {
-            EaseElement leqE = (EaseElement)esElem;
-            stBuilder.Append('{');
+            EaseElement elem = (EaseElement)esElem;
+            sb.Append('{');
             //check docattr= 
-            var nameAttr = leqE.GetAttributeValueAsString("!n");
+            string nameAttr = elem.GetAttributeValueAsString("!n");
             int attrCount = 0;
             if (nameAttr == null)
             {
@@ -297,15 +299,13 @@ namespace SharpConnect.Data
             else
             {
                 //use default elementname
-                stBuilder.Append("\"!n\":\"");
+                sb.Append("\"!n\":\"");
                 //TODO: review string escape here ***
-                stBuilder.Append(leqE.Name);
-                stBuilder.Append('"');
+                sb.Append(elem.Name);
+                sb.Append('"');
                 attrCount = 1;
             }
-
-
-            foreach (var attr in leqE.GetAttributeIterForward())
+            foreach (EsAttr attr in elem.GetAttributeIterForward())
             {
                 if (attr.Name == "!n")
                 {
@@ -313,40 +313,41 @@ namespace SharpConnect.Data
                 }
                 if (attrCount > 0)
                 {
-                    stBuilder.Append(',');
+                    sb.Append(',');
                 }
-                stBuilder.Append('"');
-                stBuilder.Append(attr.Name); //TODO: review escape string here
-                stBuilder.Append('"');
-                stBuilder.Append(':');
-                WriteJson(attr.Value, stBuilder);
+                sb.Append('"');
+                sb.Append(attr.Name); //TODO: review escape string here
+                sb.Append('"');
+                sb.Append(':');
+                WriteJson(attr.Value, sb);
                 attrCount++;
             }
             //-------------------
             //for children nodes
-            int j = leqE.ChildCount;
+            int j = elem.ChildCount;
             //create children nodes
             if (j > 0)
             {
                 if (attrCount > 0)
                 {
-                    stBuilder.Append(',');
+                    sb.Append(',');
                 }
-                stBuilder.Append("\"!c\":[");
+                sb.Append("\"!c\":[");
                 for (int i = 0; i < j; ++i)
                 {
                     if (i > 0)
                     {
-                        stBuilder.Append(',');
+                        sb.Append(',');
                     }
-                    WriteJson(leqE.GetChild(i), stBuilder);
+                    WriteJson(elem.GetChild(i), sb);
                 }
-                stBuilder.Append(']');
+                sb.Append(']');
             }
             //-------------------
-            stBuilder.Append('}');
+            sb.Append('}');
         }
 
+  
         public static string ToJsonString(this EsElem esElem)
         {
             var stbuilder = new StringBuilder();
@@ -355,7 +356,7 @@ namespace SharpConnect.Data
         }
 
 
-        public static void WriteJson(object elem, StringBuilder stBuilder)
+        public static void WriteJson(object elem, StringBuilder sb)
         {
             //recursive
 #if DEBUG
@@ -363,15 +364,15 @@ namespace SharpConnect.Data
 #endif
             if (elem == null)
             {
-                stBuilder.Append("null");
+                sb.Append("null");
             }
             else if (elem is string)
             {
-                stBuilder.Append('"');
+                sb.Append('"');
                 //TODO: proper escape json string
                 //ensure we scape " inside this string
-                stBuilder.Append((string)elem);
-                stBuilder.Append('"');
+                sb.Append((string)elem);
+                sb.Append('"');
             }
             else if (elem is double ||
                 (elem is float) ||
@@ -379,11 +380,11 @@ namespace SharpConnect.Data
                 (elem is uint))
             {
                 //TODO: review all primitive conversion
-                stBuilder.Append(elem.ToString());
+                sb.Append(elem.ToString());
             }
             else if (elem is Array a)
             {
-                stBuilder.Append('[');
+                sb.Append('[');
                 //write element into array
 
                 int j = a.Length;
@@ -391,26 +392,26 @@ namespace SharpConnect.Data
                 {
                     if (i > 0)
                     {
-                        stBuilder.Append(',');
+                        sb.Append(',');
                     }
-                    WriteJson(a.GetValue(i), stBuilder);
+                    WriteJson(a.GetValue(i), sb);
                 }
-                stBuilder.Append(']');
+                sb.Append(']');
             }
             else if (elem is EaseElement ease_elem)
             {
-                WriteJson(ease_elem, stBuilder);
+                WriteJson(ease_elem, sb);
             }
             else if (elem is EsArr es_arr)
             {
-                WriteJson(es_arr, stBuilder);
+                WriteJson(es_arr, sb);
             }
             else if (elem is DateTime d)
             {
                 //write datetime as string
-                stBuilder.Append('"');
-                stBuilder.Append(string.Format("{0:u}", d));
-                stBuilder.Append('"');
+                sb.Append('"');
+                sb.Append(string.Format("{0:u}", d));
+                sb.Append('"');
             }
             else
             {
@@ -418,10 +419,10 @@ namespace SharpConnect.Data
                 Type elemType = elem.GetType();
                 //find codec of this type
 
-                stBuilder.Append(elem.ToString());
+                sb.Append(elem.ToString());
                 //throw new NotSupportedException();
             }
         }
-       
+
     }
 }

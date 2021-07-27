@@ -19,6 +19,7 @@ namespace SharpConnect.Data
         int ChildCount { get; }
         int AttributeCount { get; }
         object GetChild(int index);
+        object UserData { get; set; }
     }
     /// <summary>
     /// ease attribute
@@ -46,6 +47,7 @@ namespace SharpConnect.Data
     public interface EsDoc
     {
         EsElem CreateElement();
+        EsElem CreateElement(string name);
         EsArr CreateArray();
         EsElem DocumentElement { get; set; }
     }
