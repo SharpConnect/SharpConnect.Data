@@ -9,14 +9,28 @@ namespace SharpConnect.Data
         {
             _easeDoc = blankdoc;
         }
-
+        public bool EnableExtension { get; set; }
         protected override EsElem CreateElement() => _easeDoc.CreateElement();
 
         protected override EsArr CreateArray() => _easeDoc.CreateArray();
 
         protected override void AddElementAttribute(EsElem targetElem, string key, object value)
         {
-            targetElem.AppendAttribute(key, value);             
+            if (EnableExtension)
+            {
+                //our extension
+                if (key == "!n" && value is string name)
+                {
+                    targetElem.Name = name;
+                    return;
+                }
+                else if (key == "!c")
+                {
+                    targetElem.AppendChild(value);
+                    return;
+                }
+            }
+            targetElem.AppendAttribute(key, value);
         }
 
         protected override void AddArrayElement(EsArr targetArray, object value)

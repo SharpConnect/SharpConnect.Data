@@ -25,15 +25,12 @@ namespace SharpConnect.Data
             {
                 return 0;
             }
-            int foundIndex;
-            if (_dic.TryGetValue(str, out foundIndex))
+
+            if (!_dic.TryGetValue(str, out int foundIndex))
             {
-                return foundIndex;
+                foundIndex = -1;
             }
-            else
-            {
-                return -1;
-            }
+            return foundIndex;
         }
 
         public int AddStringIfNotExist(string str)
@@ -43,9 +40,8 @@ namespace SharpConnect.Data
             {
                 return 0;
             }
-            //---------------------------------------
-            int foundIndex;
-            if (_dic.TryGetValue(str, out foundIndex))
+
+            if (_dic.TryGetValue(str, out int foundIndex))
             {
                 return foundIndex;
             }
@@ -63,17 +59,6 @@ namespace SharpConnect.Data
         public int Count => _dic.Count;
 
         public string GetString(int index) => _list[index];
-
-        public IEnumerable<string> WordIter
-        {
-            get
-            {
-                foreach (string str in _dic.Keys)
-                {
-                    yield return str;
-                }
-            }
-        }
 
         public List<string> GetStringList() => _list;
 

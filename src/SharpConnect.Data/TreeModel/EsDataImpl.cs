@@ -7,7 +7,6 @@ namespace SharpConnect.Data
 {
     public class EaseDocument : EsDoc
     {
-        //Dictionary<string, int> _stringTable = new Dictionary<string, int>();
         public EaseDocument()
         {
 
@@ -18,42 +17,28 @@ namespace SharpConnect.Data
             elem.Name = elementName;
             return elem;
         }
-
+        public bool EnableExtension { get; set; }
         public EsElem CreateElement() => new EaseElement();
-
         public EsArr CreateArray() => new EaseArray();
-
-        //public int GetStringIndex(string str)
-        //{
-        //    _stringTable.TryGetValue(str, out int found);
-        //    return found;
-        //}
-
         public EsElem DocumentElement { get; set; }
-
-        public EsElem Parse(string jsonstr)
-        {
-            return Parse(jsonstr.ToCharArray());
-        }
-        public EsElem Parse(char[] jsonstr)
-        {
-            var parser = new EaseDocParser(this);
-            parser.Parse(jsonstr);
-            return parser.CurrentElement as EsElem;
-        }
         public EsAttr CreateAttribute(string key, object value) => new EaseAttribute(key, value);
     }
 
-
-    static class EsElemHelper
+    public static class EaseDocumentExtensions
     {
-        public static EsElem CreateXmlElementForDynamicObject(EsDoc doc)
+        public static object Parse(this EaseDocument doc, string jsonstr)
         {
-            var elem = new EaseElement();
-            elem.Name = "!j";
-            return elem;
+            return Parse(doc, jsonstr.ToCharArray());
+        }
+        public static object Parse(this EaseDocument doc, char[] jsonstr)
+        {
+            var parser = new EaseDocParser(doc);
+            parser.EnableExtension = doc.EnableExtension;
+            parser.Parse(jsonstr);
+            return parser.CurrentValue;
         }
     }
+
     class EaseArray : EsArr
     {
         List<object> _member = new List<object>();
@@ -87,8 +72,7 @@ namespace SharpConnect.Data
 
     class EaseElement : EsElem
     {
-        List<EsElem> _childNodes;
-
+        List<object> _childNodes;
         Dictionary<string, int> _attrs = new Dictionary<string, int>();
         List<EaseAttribute> _attrsValues = new List<EaseAttribute>();
 
@@ -111,11 +95,11 @@ namespace SharpConnect.Data
             }
         }
 
-        public void AppendChild(EsElem element)
+        public void AppendChild(object element)
         {
             if (_childNodes == null)
             {
-                _childNodes = new List<EsElem>();
+                _childNodes = new List<object>();
             }
             _childNodes.Add(element);
         }
@@ -165,6 +149,10 @@ namespace SharpConnect.Data
             return null;
         }
         public object UserData { get; set; }
+
+#if DEBUG
+        public override string ToString() => Name;
+#endif
     }
 
     class EaseAttribute : EsAttr
@@ -179,6 +167,11 @@ namespace SharpConnect.Data
         public override string ToString() => Name + ":" + Value;
     }
 
+    public class EsElemJsonWriteParameters
+    {
+        public bool WithElemName { get; set; }
+        public StringBuilder Output { get; set; }
+    }
     public static class EsElemExtensionMethods
     {
         public static string GetAttrValueOrDefaultAsString(this EsElem esElem, string attrName)
@@ -256,18 +249,24 @@ namespace SharpConnect.Data
         }
 
         //-----------------------------------------------------------------------
-        public static void WriteJson(this EsDoc doc, StringBuilder sb)
+        public static void WriteJson(this EsDoc doc, EsElemJsonWriteParameters writePars)
         {
             //write to 
             var docElem = doc.DocumentElement;
             if (docElem != null)
             {
-                WriteJson(docElem, sb);
+                WriteJson(docElem, writePars);
             }
         }
-
-        static void WriteJson(EsArr esArr, StringBuilder sb)
+        public static void WriteJson(this EsDoc doc, StringBuilder stbuilder)
         {
+            EsElemJsonWriteParameters pars = new EsElemJsonWriteParameters();
+            pars.Output = stbuilder;
+            WriteJson(doc, pars);
+        }
+        static void WriteJson(EsArr esArr, EsElemJsonWriteParameters pars)
+        {
+            StringBuilder sb = pars.Output;
             sb.Append('[');
             int j = esArr.Count;
             for (int i = 0; i < j; ++i)
@@ -276,13 +275,18 @@ namespace SharpConnect.Data
                 {
                     sb.Append(',');
                 }
-                WriteJson(esArr[i], sb);
+                WriteJson(esArr[i], pars);
             }
             sb.Append(']');
         }
 
         public static void WriteJson(this EsElem esElem, StringBuilder sb)
         {
+            WriteJson(esElem, new EsElemJsonWriteParameters { Output = sb });
+        }
+        public static void WriteJson(this EsElem esElem, EsElemJsonWriteParameters pars)
+        {
+            StringBuilder sb = pars.Output;
             EaseElement elem = (EaseElement)esElem;
             sb.Append('{');
             //check docattr= 
@@ -292,18 +296,26 @@ namespace SharpConnect.Data
             {
                 //TODO: review here if we want auto element name or not?
                 //use specific name
-                //stBuilder.Append("\"!n\":\"");
-                //stBuilder.Append(leqE.Name);
-                //stBuilder.Append('"');
+                if (pars.WithElemName && elem.Name != null)
+                {
+                    sb.Append("\"!n\":\"");
+                    //TODO: review string escape here ***
+                    sb.Append(elem.Name);
+                    sb.Append('"');
+                    attrCount = 1;
+                }
             }
             else
             {
                 //use default elementname
-                sb.Append("\"!n\":\"");
-                //TODO: review string escape here ***
-                sb.Append(elem.Name);
-                sb.Append('"');
-                attrCount = 1;
+                if (elem.Name != null)
+                {
+                    sb.Append("\"!n\":\"");
+                    //TODO: review string escape here ***
+                    sb.Append(elem.Name);
+                    sb.Append('"');
+                    attrCount = 1;
+                }
             }
             foreach (EsAttr attr in elem.GetAttributeIterForward())
             {
@@ -319,7 +331,7 @@ namespace SharpConnect.Data
                 sb.Append(attr.Name); //TODO: review escape string here
                 sb.Append('"');
                 sb.Append(':');
-                WriteJson(attr.Value, sb);
+                WriteJson(attr.Value, pars);
                 attrCount++;
             }
             //-------------------
@@ -339,7 +351,7 @@ namespace SharpConnect.Data
                     {
                         sb.Append(',');
                     }
-                    WriteJson(elem.GetChild(i), sb);
+                    WriteJson(elem.GetChild(i), pars);
                 }
                 sb.Append(']');
             }
@@ -347,21 +359,24 @@ namespace SharpConnect.Data
             sb.Append('}');
         }
 
-  
+
         public static string ToJsonString(this EsElem esElem)
         {
+            //TODO: review here again
             var stbuilder = new StringBuilder();
-            esElem.WriteJson(stbuilder);
+            var pars = new EsElemJsonWriteParameters();
+            pars.Output = stbuilder;
+            esElem.WriteJson(pars);
             return stbuilder.ToString();
         }
 
-
-        public static void WriteJson(object elem, StringBuilder sb)
+        public static void WriteJson(object elem, EsElemJsonWriteParameters pars)
         {
             //recursive
 #if DEBUG
             Type t = elem.GetType();
 #endif
+            StringBuilder sb = pars.Output;
             if (elem == null)
             {
                 sb.Append("null");
@@ -394,17 +409,17 @@ namespace SharpConnect.Data
                     {
                         sb.Append(',');
                     }
-                    WriteJson(a.GetValue(i), sb);
+                    WriteJson(a.GetValue(i), pars);
                 }
                 sb.Append(']');
             }
             else if (elem is EaseElement ease_elem)
             {
-                WriteJson(ease_elem, sb);
+                WriteJson(ease_elem, pars);
             }
             else if (elem is EsArr es_arr)
             {
-                WriteJson(es_arr, sb);
+                WriteJson(es_arr, pars);
             }
             else if (elem is DateTime d)
             {

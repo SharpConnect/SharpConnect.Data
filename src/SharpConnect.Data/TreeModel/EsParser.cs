@@ -5,7 +5,25 @@ using System.Text;
 
 namespace SharpConnect.Data
 {
+    public enum EsValueHint : byte
+    {
+        Unknown,
+        None, //None => no attribute here (!= null)
 
+        True, False, Null,
+
+
+        StringLiteral,
+        StringLiteralWithSomeEscape,
+        IntegerNumber,
+        NumberWithFractionPart,
+        NumberWithExponentialPart,
+
+        Identifier,
+        Comment,//extension
+        Object,
+        Array,
+    }
     /// <summary>
     /// event-driven json-like parser 
     /// </summary>
@@ -17,37 +35,38 @@ namespace SharpConnect.Data
             Object,
             Array
         }
+
         enum ParsingState
         {
-            _0_Init,
-            _1_ObjectKey,
-            _2_CollectStringLiteral,
-            _3_StringEscape,
-            _4_FinishKeyPartWaitForSemiColon,
-            _5_ExpectObjectValueOrArrayElement,
-            _6_AfterObjectValueOrArrayElement,
-            _7_CollectNumberLiteral,
-            _8_CollectIdentifier,
+            _1_ExpectObjectValueOrArrayElement,
+            _2_ExpectObjectKey,
+            _3_WaitForColon,
+            _4_WaitForCommaOrEnd,
         }
-        enum NumberPart
+
+        enum NumberPart : byte
         {
             IntegerPart,
             FractionPart,
-            E, //e or E
-            ESign,//e and sign
             ExponentialPart,
         }
-        protected enum ValueHint
+
+
+
+        public struct NumberParts
         {
-            Unknown,
-            StringLiteral,
-            IntegerNumber,
-            NumberWithFractionPart,
-            NumberWithExponentialPart,
-            NumberWithSignedExponentialPart,
-            Identifier,
-            Comment,//extension
+            public bool integer_minus;
+            public int integer_at;
+            public byte integer_len; //255 
+            //
+            public ushort fraction_offset; //offset from intger_at
+            public byte fraction_len; //255 
+            //
+            public bool exponent_minus;
+            public ushort exponent_offset; //offset from intger_at
+            public byte exponent_len; //255
         }
+
 #if DEBUG
         public static bool dbug_EnableLogParser = false;
         public static int dbug_file_count = 0;
@@ -79,19 +98,13 @@ namespace SharpConnect.Data
         {
 
         }
-        protected virtual void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
+        protected virtual void NewKey(int start, int len)
         {
-
         }
-        protected virtual void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
+        protected virtual void NewValue(int start, int len)
         {
-
         }
-        protected virtual void OnError(ref int currentIndex)
-        {
-
-
-        }
+        protected virtual void Comma() { }
         protected virtual void OnParseEnd()
         {
 
@@ -103,8 +116,335 @@ namespace SharpConnect.Data
         protected virtual void NotifyError()
         {
         }
-        static void ReadSingleLineComment(char[] sourceBuffer, int startAt, ref int latestIndex)
+
+        static void ReadIdentifier(EsParserBase p, int startAt, out int latestIndex)
         {
+            p.CollectedValueHint = EsValueHint.Identifier;
+            int pos = startAt + 1;
+            char[] sourceBuffer = p._sourceBuffer;
+            int lim = sourceBuffer.Length;
+            do
+            {
+                char c = sourceBuffer[pos];
+                if (c == '_' || char.IsLetterOrDigit(c))
+                {
+                    //collect
+                    pos++;
+                }
+                else
+                {
+                    latestIndex = pos - 1;
+                    return;
+                }
+            } while (pos < lim);
+            //
+            latestIndex = pos;
+
+        }
+        static void ReadStringLiteral(EsParserBase p, char escapeChar, int startAt, out int latestIndex)
+        {
+
+            char[] sourceBuffer = p._sourceBuffer;
+
+            p.CollectedValueHint = EsValueHint.StringLiteral;
+
+            int pos = startAt + 1;
+            char c = sourceBuffer[pos];
+            int lim = sourceBuffer.Length - 1;
+
+            if (escapeChar == '"')
+            {
+                while (c != '"' && pos < lim)
+                {
+                    //read until stop
+                    if (c == '\\') //escape
+                    {
+                        p.CollectedValueHint = EsValueHint.StringLiteralWithSomeEscape;
+                        //escape mode 1 char
+                        if (pos + 1 < lim)
+                        {
+                            //read next char
+                            char c2 = sourceBuffer[pos + 1];
+                            switch (c2)
+                            {
+                                default:
+                                    //error
+                                    throw new NotSupportedException();
+                                    break;
+                                case '"':
+                                    pos++;
+                                    break;
+                                //case '\'': //extension
+                                //    pos++;
+                                //    break;
+                                case '/':
+                                    pos++;
+                                    break;
+                                case '\\':
+                                    pos++;
+                                    break;
+                                case 'b': // backspace
+                                    pos++;
+                                    break;
+                                case 'f': //form ffed
+                                    pos++;
+                                    break;
+                                case 'n': //newline
+                                    pos++;
+                                    break;
+                                case 'r': //carriage return
+                                    pos++;
+                                    break;
+                                case 't'://t
+                                    pos++;
+                                    break;
+                                case 'u':
+                                    if (pos < lim - 4)
+                                    {
+                                        //json spec
+                                        //this follow by  4 chars
+                                        //for extension we check if it match with 4 chars or not 
+                                        uint c_uint = ParseUnicode(
+                                         sourceBuffer[pos + 1],
+                                         sourceBuffer[pos + 2],
+                                         sourceBuffer[pos + 3],
+                                         sourceBuffer[pos + 4]);
+                                        pos += 4;
+                                    }
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            //collect more
+                        }
+                    }
+                    pos++;
+                    c = sourceBuffer[pos];
+                }
+            }
+            else if (escapeChar == '\'')
+            {
+                //this is our extension
+                while (c != '\'' && pos < lim)
+                {
+                    //read until stop
+                    if (c == '\\') //escape
+                    {
+                        p.CollectedValueHint = EsValueHint.StringLiteralWithSomeEscape;
+                        //escape mode 1 char
+                        if (pos + 1 < lim)
+                        {
+                            //read next char
+                            char c2 = sourceBuffer[pos + 1];
+                            switch (c2)
+                            {
+                                default:
+                                    //error
+                                    throw new NotSupportedException();
+                                    break;
+                                case '"':
+                                    pos++;
+                                    break;
+                                case '\'': //extension
+                                    pos++;
+                                    break;
+                                case '/':
+                                    pos++;
+                                    break;
+                                case '\\':
+                                    pos++;
+                                    break;
+                                case 'b': // backspace
+                                    pos++;
+                                    break;
+                                case 'f': //form ffed
+                                    pos++;
+                                    break;
+                                case 'n': //newline
+                                    pos++;
+                                    break;
+                                case 'r': //carriage return
+                                    pos++;
+                                    break;
+                                case 't'://t
+                                    pos++;
+                                    break;
+                                case 'u':
+                                    if (pos < lim - 4)
+                                    {
+                                        //json spec
+                                        //this follow by  4 chars
+                                        //for extension we check if it match with 4 chars or not 
+                                        uint c_uint = ParseUnicode(
+                                         sourceBuffer[pos + 1],
+                                         sourceBuffer[pos + 2],
+                                         sourceBuffer[pos + 3],
+                                         sourceBuffer[pos + 4]);
+                                        pos += 4;
+                                    }
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            //collect more
+                        }
+                    }
+                    pos++;
+                    c = sourceBuffer[pos];
+                }
+            }
+
+            latestIndex = pos;
+        }
+
+
+
+        static void ReadNumberLiteral(EsParserBase p, int startAt, out int latestIndex)
+        {
+            char[] sourceBuffer = p._sourceBuffer;
+            NumberPart state = NumberPart.IntegerPart;
+            int lim = sourceBuffer.Length - 1;
+            int i = startAt;
+            int collect = 0;
+            //10-based
+            NumberParts numParts = new NumberParts();
+            numParts.integer_at = startAt;
+
+            int integer_part_count = 0;
+            int fraction_part_count = 0;
+            int exponent_part_count = 0;
+            for (; i < lim; ++i)
+            {
+                char c = sourceBuffer[i];
+                switch (state)
+                {
+                    case NumberPart.IntegerPart:
+                        {
+                            if (c == '-')
+                            {
+                                //start integer with minus
+                                numParts.integer_minus = true;
+                                numParts.integer_at++;
+                                collect++;
+                            }
+                            else if (char.IsDigit(c))
+                            {
+                                //collect more
+
+                                //accum
+                                integer_part_count++;
+                                collect++;
+                            }
+                            else if (c == '.')
+                            {
+                                //fraction
+                                collect++;
+                                numParts.fraction_offset = (ushort)((i + 1) - numParts.integer_at);
+                                state = NumberPart.FractionPart;
+                            }
+                            else
+                            {
+                                //this char is not part of the literal number
+                                goto EXIT;
+                                //break
+                                //summary and return
+                            }
+                        }
+                        break;
+                    case NumberPart.FractionPart:
+                        {
+                            //fraction part
+                            if (char.IsDigit(c))
+                            {
+                                //same state
+                                //collect more
+                                fraction_part_count++;
+                                collect++;
+                            }
+                            else if (c == 'e' || c == 'E')
+                            {
+                                //exponent part 
+                                //base 10
+                                collect++;
+
+
+                                if (i + 1 < lim)
+                                {
+                                    state = NumberPart.ExponentialPart;
+                                    i++;
+                                    c = sourceBuffer[i + 1];
+                                    if (c == '+')
+                                    {
+                                        //ok
+                                        numParts.exponent_offset = (ushort)((i + 2) - numParts.integer_at);
+                                    }
+                                    else if (c == '-')
+                                    {
+                                        numParts.exponent_minus = true;
+                                        numParts.exponent_offset = (ushort)((i + 2) - numParts.integer_at);
+                                    }
+                                    else
+                                    {
+                                        //must be number
+                                        numParts.exponent_offset = (ushort)((i + 1) - numParts.integer_at);
+                                        goto case NumberPart.ExponentialPart;
+                                    }
+                                }
+
+                            }
+                            else
+                            {
+                                //this char is not part of the literal number
+                                goto EXIT;
+                            }
+                        }
+                        break;
+                    case NumberPart.ExponentialPart:
+                        {
+                            //after exponent part
+                            if (char.IsDigit(c))
+                            {
+                                //collect more
+                                exponent_part_count++;
+                                collect++;
+                            }
+                            else
+                            {
+                                //summary and return
+                                //this char is not part of the literal number
+                                goto EXIT;
+                            }
+                        }
+                        break;
+                }
+            }
+        EXIT:
+            //--------------------
+            //summary
+            numParts.integer_len = (byte)integer_part_count;
+            numParts.fraction_len = (byte)fraction_part_count;
+            numParts.exponent_len = (byte)exponent_part_count;
+
+            switch (state)
+            {
+                case NumberPart.IntegerPart:
+                    p.CollectedValueHint = EsValueHint.IntegerNumber;
+                    break;
+                case NumberPart.FractionPart:
+                    p.CollectedValueHint = EsValueHint.NumberWithFractionPart;
+                    break;
+                case NumberPart.ExponentialPart:
+                    p.CollectedValueHint = EsValueHint.NumberWithExponentialPart;
+                    break;
+            }
+            p.CollectedNumberParts = numParts;
+            latestIndex = startAt + collect - 1;
+        }
+        static void ReadSingleLineComment(EsParserBase p, int startAt, out int latestIndex)
+        {
+            char[] sourceBuffer = p._sourceBuffer;
             latestIndex = startAt;
             for (; latestIndex < sourceBuffer.Length; ++latestIndex)
             {
@@ -137,8 +477,9 @@ namespace SharpConnect.Data
                 }
             }
         }
-        static void ReadBlockComment(char[] sourceBuffer, int startAt, ref int latestIndex)
+        static void ReadBlockComment(EsParserBase p, int startAt, out int latestIndex)
         {
+            char[] sourceBuffer = p._sourceBuffer;
             latestIndex = startAt;
             for (; latestIndex < sourceBuffer.Length; ++latestIndex)
             {
@@ -185,110 +526,141 @@ namespace SharpConnect.Data
         }
 
 
+        protected char[] _sourceBuffer;
 
-        public virtual void Parse(char[] sourceBuffer)
+
+        protected EsValueHint CollectedValueHint { get; private set; }
+        protected NumberParts CollectedNumberParts { get; private set; }
+
+        Stack<EsElementKind> _isObjectStack = new Stack<EsElementKind>();
+        public virtual void Parse(char[] buff)
         {
-            OnParseStart();
-            //--------------------------------------------------------------
-            EsElementKind currentElementKind = EsElementKind.Unknown;
-            Stack<EsElementKind> elemKindStack = new Stack<EsElementKind>();
-            //--------------------------------------------------------------
+            _sourceBuffer = buff;
             IsSuccess = true;
 
-            StringBuilder myBuffer = new StringBuilder();
-            //string lastestKey = "";
-            ParsingState currentState = ParsingState._0_Init;
-            int j = sourceBuffer.Length;
+            ParsingState currentState = ParsingState._1_ExpectObjectValueOrArrayElement;
+            EsElementKind currentElementKind = EsElementKind.Unknown;
+            _isObjectStack.Clear();
 
-            bool isInKeyPart = false;
-            NumberPart numberPart = NumberPart.IntegerPart;
-
-            //WARNING: custom version, about ending with comma
-            //we may use implicit comma feature, 
-            //in case we start new line but forget a comma,
-            //we auto add comma 
-
-            //bool implicitComma = false;
-            char openStringWithChar = '"';
-            int i = 0;
-            ValueHint currentValueHint = ValueHint.Unknown;
-            for (i = 0; i < j; i++)
+            for (int i = 0; i < buff.Length; i++)
             {
+                char c = buff[i];
 
-                if (!IsSuccess)
+                if (char.IsWhiteSpace(c))
                 {
-                    OnError(ref i);
-                    //handle the error ****
-                    //#if DEBUG
-                    // if (dbug_EnableLogParser)
-                    // {
-                    //   dbugDataFormatParser.IndentLevel = myKeyStack.Count;
-                    //   dbugDataFormatParser.WriteLine("fail at pos=" + i + " on " + currentState);
-                    // }
-                    //#endif
-                    break; //break from loop
+                    continue;
                 }
-
-                //--------------------------
-                char c = sourceBuffer[i];
-#if DEBUG
-                if (dbug_EnableLogParser)
+                else if (c == '/')
                 {
-                    dbugEsParserLogger.WriteLine(new string('\t', elemKindStack.Count) + i + " ," + c.ToString() + "," + currentState);
+                    //extension: comment syntax                  
+                    if (i < buff.Length - 1) //has next
+                    {
+                        char next_c = buff[i + 1];
+                        if (next_c == '/')
+                        {
+                            ReadSingleLineComment(this, i, out int latestIndex);
+                            i = latestIndex;
+
+                            continue;
+                        }
+                        else if (next_c == '*')
+                        {
+                            //inline comment 
+                            ReadBlockComment(this, i, out int latestIndex);
+                            i = latestIndex;
+                            continue;
+                        }
+                        else
+                        {
+                            IsSuccess = false;
+                            NotifyError();
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        IsSuccess = false;
+                        NotifyError();
+                        return;
+                    }
+                }
+                //-----------------------
+#if DEBUG
+                //System.Diagnostics.Debug.WriteLine(i + ":" + c + ":" + currentState);
+                if (i == 10)
+                {
+
                 }
 #endif
-                //--------------------------  
+
                 switch (currentState)
                 {
-                    case ParsingState._0_Init:
+                    case ParsingState._1_ExpectObjectValueOrArrayElement:
                         {
                             switch (c)
                             {
                                 case '{':
-                                    BeginObject();
-                                    //change current element kind after notification
-                                    elemKindStack.Push(currentElementKind);
-                                    currentElementKind = EsElementKind.Object;
-
-                                    myBuffer.Length = 0;//clear
-                                    isInKeyPart = true;
-                                    currentState = ParsingState._1_ObjectKey;
-                                    break;
-                                case '/':
                                     {
-                                        //-----------------------
-                                        //comment syntax
-                                        if (i < j - 1)
+                                        _isObjectStack.Push(currentElementKind);
+                                        BeginObject(); //event 
+                                        currentState = ParsingState._2_ExpectObjectKey;
+                                        currentElementKind = EsElementKind.Object;
+                                    }
+                                    break;
+                                case '[':
+                                    {
+                                        _isObjectStack.Push(currentElementKind);
+                                        BeginArray();//event
+                                        currentState = ParsingState._1_ExpectObjectValueOrArrayElement; //on the same state -- value state
+                                        currentElementKind = EsElementKind.Array;
+                                    }
+                                    break;
+                                case ']':
+                                    {
+                                        if (currentElementKind == EsElementKind.Array)
                                         {
-                                            char next_c = sourceBuffer[i + 1];
-                                            if (next_c == '/')
-                                            {
-                                                int latestIndex = i + 1;
-                                                ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                                i = latestIndex;
-                                            }
-                                            else if (next_c == '*')
-                                            {
-                                                //inline comment
-                                                int latestIndex = i + 1;
-                                                ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                                i = latestIndex;
-                                            }
-                                            else
-                                            {
-                                                IsSuccess = false;
-                                                NotifyError();
-                                            }
+                                            //empty arr
+                                            currentElementKind = _isObjectStack.Pop();
                                         }
-                                        //-----------------------
+                                        else
+                                        {
+                                            IsSuccess = false;
+                                            NotifyError();
+                                            return;
+                                        }
+                                    }
+                                    break;
+                                case '"': //standard
+                                case '\''://extension
+                                    {
+                                        //TODO: string escape here 
+                                        ReadStringLiteral(this, c, i, out int latestIndex);
+                                        NewValue(i, latestIndex - i + 1);
+                                        i = latestIndex;
+                                        currentState = ParsingState._4_WaitForCommaOrEnd;
                                     }
                                     break;
                                 default:
                                     {
-                                        if (char.IsWhiteSpace(c))
+                                        //iden
+                                        if (char.IsLetter(c) || c == '_')
                                         {
-                                            //same state
-                                            continue;
+                                            //parse as  true, false, null 
+                                            //or other iden
+                                            //parse as idenitifer
+
+                                            ReadIdentifier(this, i, out int latestIndex);
+                                            NewValue(i, latestIndex - i + 1);
+                                            i = latestIndex;
+                                            currentState = ParsingState._4_WaitForCommaOrEnd;
+                                        }
+                                        else if (char.IsDigit(c) || (c == '-'))
+                                        {
+                                            //number  
+                                            ReadNumberLiteral(this, i, out int latestIndex);
+                                            NewValue(i, latestIndex - i + 1);
+                                            i = latestIndex;
+                                            currentState = ParsingState._4_WaitForCommaOrEnd;
                                         }
                                         else
                                         {
@@ -300,724 +672,981 @@ namespace SharpConnect.Data
                             }
                         }
                         break;
-                    case ParsingState._1_ObjectKey:
+                    case ParsingState._2_ExpectObjectKey:
                         {
-                            //TODO: review here again
-                            //in json spec, not support '\"' in keypart
-
+                            //literal string 
+                            //+ our extension=> iden
                             if (c == '"' || c == '\'')
                             {
-                                //**                                
-                                openStringWithChar = c;
-                                currentValueHint = ValueHint.StringLiteral;
-                                currentState = ParsingState._2_CollectStringLiteral;
-                            }
-                            else if (char.IsWhiteSpace(c))
-                            {
-                                continue;
-                            }
-                            else if (c == '}')
-                            {
-                                //this is empty 
-                                if (currentElementKind != EsElementKind.Object)
-                                {
-                                    NotifyError();
-                                    IsSuccess = false;
-                                }
-                                else
-                                {
-#if DEBUG
-                                    if (myBuffer.Length > 0)
-                                    {
-                                        //error at this state
-                                    }
-#endif
-                                    isInKeyPart = false;
-                                    EndObject();//end current object 
-                                    //1. close current object
-                                    //2. pop current object and  switch back 
-                                    //to prev state ***
-                                    if (elemKindStack.Count > 0)
-                                    {
-                                        //switch back      
-                                        currentElementKind = elemKindStack.Pop();
-                                    }
-                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
-                                }
+
+                                ReadStringLiteral(this, c, i, out int latestIndex);
+                                //new key from literal string, not include escape char on start and begin
+                                NewKey(i + 1, latestIndex - i + 1 - 2);//event//***
+                                i = latestIndex;
+                                currentState = ParsingState._3_WaitForColon;
                             }
                             else if (char.IsLetter(c) || c == '_')
                             {
-                                currentValueHint = ValueHint.Identifier;
-                                myBuffer.Append(c); //collect identifier
-                                currentState = ParsingState._8_CollectIdentifier; //collect identifier
-                            }
-                            else if (c == '/')
-                            {
-                                //-----------------------
-                                //comment syntax
-                                if (i < j - 1)
-                                {
-                                    char next_c = sourceBuffer[i + 1];
-                                    if (next_c == '/')
-                                    {
-                                        int latestIndex = i + 1;
-                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                        i = latestIndex;
-                                    }
-                                    else if (next_c == '*')
-                                    {
-                                        //inline comment
-                                        int latestIndex = i + 1;
-                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                        i = latestIndex;
-                                    }
-                                    else
-                                    {
-                                        IsSuccess = false;
-                                        NotifyError();
-                                    }
-                                }
-                                //-----------------------
-                            }
-                            else
-                            {
-                                //extension***
-                                //
-
-                                //number or other token will error in keypart***
-                                NotifyError();
-                                IsSuccess = false;
-                                break;
-                            }
-                        }
-                        break;
-                    case ParsingState._2_CollectStringLiteral:
-                        {
-                            //collecting string 
-                            if (c == '\\')
-                            {
-                                currentState = ParsingState._3_StringEscape;
-                            }
-                            else if (c == openStringWithChar)
-                            {
-                                //close current string collection
-                                currentValueHint = ValueHint.StringLiteral;
-
-                                if (isInKeyPart)
-                                {
-                                    NewKey(myBuffer, currentValueHint);
-                                    myBuffer.Length = 0;//clear
-                                    currentState = ParsingState._4_FinishKeyPartWaitForSemiColon;
-                                }
-                                else
-                                {
-                                    NewValue(myBuffer, currentValueHint);
-                                    myBuffer.Length = 0;//clear
-                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
-
-                                }
-                            }
-                            else
-                            {
-                                myBuffer.Append(c);
-                            }
-                        }
-                        break;
-                    case ParsingState._3_StringEscape:
-                        {
-                            switch (c)
-                            {
-                                case '"':
-                                    {
-                                        myBuffer.Append('\"');
-                                    }
-                                    break;
-                                case '\'':
-                                    {
-                                        myBuffer.Append('\'');
-                                    }
-                                    break;
-                                case '/':
-                                    {
-                                        myBuffer.Append('/');
-                                    }
-                                    break;
-                                case '\\':
-                                    {
-                                        myBuffer.Append('\\');
-                                    }
-                                    break;
-                                case 'b':
-                                    {
-                                        myBuffer.Append('\b');
-                                    }
-                                    break;
-                                case 'f':
-                                    {
-                                        myBuffer.Append('\f');
-                                    }
-                                    break;
-                                case 'r':
-                                    {
-                                        myBuffer.Append('\r');
-                                    }
-                                    break;
-                                case 'n':
-                                    {
-                                        myBuffer.Append('\n');
-                                    }
-                                    break;
-                                case 't':
-                                    {
-                                        myBuffer.Append('\t');
-                                    }
-                                    break;
-                                case 'u':
-                                    {
-                                        //unicode char in hexa digit
-                                        //TODO: review here if we have enough char to parse ***
-                                        if (i < j - 4)
-                                        {
-                                            //json spec
-                                            //this follow by  4 chars
-                                            //for extension we check if it match with 4 chars or not 
-                                            uint c_uint = ParseUnicode(
-                                             sourceBuffer[i + 1],
-                                             sourceBuffer[i + 2],
-                                             sourceBuffer[i + 3],
-                                             sourceBuffer[i + 4]);
-                                            myBuffer.Append((char)c_uint);
-                                            i += 4;
-                                        }
-                                        else
-                                        {
-                                            //error
-                                            IsSuccess = false;
-                                            NotifyError();
-                                        }
-                                    }
-                                    break;
-                                default:
-                                    {
-                                        NotifyError();
-                                        IsSuccess = false;
-                                    }
-                                    break;
-                            }
-                            //switch back to state 2_collectStringLiteral
-                            currentState = ParsingState._2_CollectStringLiteral;
-                        }
-                        break;
-                    case ParsingState._4_FinishKeyPartWaitForSemiColon:
-                        {
-                            //wait for :
-                            if (c == ':')
-                            {
-                                myBuffer.Length = 0;//clear
-                                isInKeyPart = false;
-                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //object's value part                                
-                            }
-                            else if (char.IsWhiteSpace(c))
-                            {
-                                continue;
-                            }
-                            else if (c == '/')
-                            {
-                                //-----------------------
-                                //comment syntax
-                                if (i < j - 1)
-                                {
-                                    char next_c = sourceBuffer[i + 1];
-                                    if (next_c == '/')
-                                    {
-                                        int latestIndex = i + 1;
-                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                        i = latestIndex;
-                                    }
-                                    else if (next_c == '*')
-                                    {
-                                        //inline comment
-                                        int latestIndex = i + 1;
-                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                        i = latestIndex;
-                                    }
-                                    else
-                                    {
-                                        IsSuccess = false;
-                                        NotifyError();
-                                    }
-                                }
-                                //-----------------------
-                            }
-                            else
-                            {
-                                //TODO: add recovery extension here
-                                NotifyError();
-                                IsSuccess = false;
-                                break;
-                            }
-                        }
-                        break;
-                    case ParsingState._5_ExpectObjectValueOrArrayElement:
-                        {
-                            //in value part *** 
-                            //of object or array 
-
-                            if (c == '"' || c == '\'')
-                            {
-                                //TODO: string escape here
-                                openStringWithChar = c;
-                                //string val
-                                currentState = ParsingState._2_CollectStringLiteral;
-                            }
-                            else if (char.IsDigit(c) || (c == '-'))
-                            {
-                                //TODO:
-                                //support extension + 
-                                myBuffer.Append(c);
-                                //number
-                                currentValueHint = ValueHint.IntegerNumber;
-                                numberPart = NumberPart.IntegerPart;
-                                currentState = ParsingState._7_CollectNumberLiteral;
-                            }
-                            else if (c == '{')
-                            {
-                                //store current object in stack
-                                BeginObject();
-                                elemKindStack.Push(currentElementKind);
-                                currentElementKind = EsElementKind.Object;
-                                isInKeyPart = true;
-                                currentState = ParsingState._1_ObjectKey;
-                            }
-                            else if (c == '[')
-                            {
-                                BeginArray();
-                                elemKindStack.Push(currentElementKind);
-                                currentElementKind = EsElementKind.Array;
-                                isInKeyPart = false;
-                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //on the same state -- value state
-                            }
-                            else if (c == ']')
-                            {
-                                if (currentElementKind != EsElementKind.Array)
-                                {
-                                    NotifyError();
-                                    IsSuccess = false;
-                                }
-                                else
-                                {
-                                    EndArray();//end current array
-
-                                    if (elemKindStack.Count > 0)
-                                    {
-
-                                        currentElementKind = elemKindStack.Pop();
-                                    }
-                                }
-                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
-                            }
-                            else if (c == '/')
-                            {
-                                //-----------------------
-                                //comment syntax
-                                if (i < j - 1)
-                                {
-                                    char next_c = sourceBuffer[i + 1];
-                                    if (next_c == '/')
-                                    {
-                                        int latestIndex = i + 1;
-                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                        i = latestIndex;
-                                    }
-                                    else if (next_c == '*')
-                                    {
-                                        //inline comment
-                                        int latestIndex = i + 1;
-                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                        i = latestIndex;
-                                    }
-                                    else
-                                    {
-                                        IsSuccess = false;
-                                        NotifyError();
-                                    }
-                                }
-                                //-----------------------
-                            }
-                            else if (char.IsWhiteSpace(c))
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                //we collect other character into buffer
-                                //so we can collect 
-                                //null, true, false
-                                //or other identifier  ***
-                                currentState = ParsingState._8_CollectIdentifier;
-                                myBuffer.Append(c);
-                            }
-                        }
-                        break;
-                    case ParsingState._6_AfterObjectValueOrArrayElement:
-                        {
-                            switch (c)
-                            {
-                                case ',':
-                                    switch (currentElementKind)
-                                    {
-                                        default: throw new NotSupportedException();
-                                        case EsElementKind.Object:
-                                            currentState = ParsingState._1_ObjectKey;
-                                            isInKeyPart = true;
-                                            break;
-                                        case EsElementKind.Array:
-                                            //array
-                                            currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
-                                            break;
-                                    }
-                                    break;
-                                case ']':
-                                    if (currentElementKind != EsElementKind.Array)
-                                    {
-                                        //error
-                                        throw new NotSupportedException();
-                                    }
-                                    EndArray();
-
-                                    //close current array
-                                    //then push value back to prev stored value
-                                    if (elemKindStack.Count > 0)
-                                    {
-
-                                        //current value must be array
-                                        currentElementKind = elemKindStack.Pop();
-                                    }
-                                    break;
-                                case '}':
-
-                                    if (currentElementKind != EsElementKind.Object)
-                                    {
-                                        //error
-                                        throw new NotSupportedException();
-                                    }
-                                    EndObject();
-
-                                    if (elemKindStack.Count > 0)
-                                    {
-                                        currentElementKind = elemKindStack.Pop();
-                                    }
-                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
-                                    break;
-                                case '/':
-                                    {
-                                        //-----------------------
-                                        //comment syntax
-                                        if (i < j - 1)
-                                        {
-                                            char next_c = sourceBuffer[i + 1];
-                                            if (next_c == '/')
-                                            {
-                                                int latestIndex = i + 1;
-                                                ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                                i = latestIndex;
-                                            }
-                                            else if (next_c == '*')
-                                            {
-                                                //inline comment
-                                                int latestIndex = i + 1;
-                                                ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
-                                                i = latestIndex;
-                                            }
-                                            else
-                                            {
-                                                IsSuccess = false;
-                                                NotifyError();
-                                            }
-                                        }
-                                        //-----------------------
-                                    }
-                                    break;
-                                default:
-                                    //?
-                                    //TODO: error recovery / or handle error with some extension 
-                                    break;
-                            }
-                        }
-                        break;
-                    case ParsingState._7_CollectNumberLiteral:
-                        {
-                            //------------------------------------------------------
-                            //TODO: review pass sign state of number literal
-                            //check if we support hex liternal or binary literal
-                            //this is extension to normal json ***
-                            //------------------------------------------------------ 
-
-                            if (char.IsDigit(c))
-                            {
-                                myBuffer.Append(c);
-                            }
-                            else if (c == '.')
-                            {
-                                if (numberPart == NumberPart.IntegerPart)
-                                {
-                                    myBuffer.Append(c);
-                                    numberPart = NumberPart.FractionPart;
-                                    currentValueHint = ValueHint.NumberWithFractionPart;
-                                }
-                                else
-                                {
-                                    NotifyError();
-                                    IsSuccess = false;
-                                    break;
-                                }
-                            }
-                            else if (c == 'e' || c == 'E')
-                            {
-                                myBuffer.Append(c);
-                                switch (numberPart)
-                                {
-                                    case NumberPart.IntegerPart:
-                                        numberPart = NumberPart.E;
-                                        currentValueHint = ValueHint.NumberWithExponentialPart;
-                                        break;
-                                    case NumberPart.FractionPart:
-                                        numberPart = NumberPart.E;
-                                        currentValueHint = ValueHint.NumberWithExponentialPart;
-                                        break;
-                                    default:
-                                        NotifyError();
-                                        IsSuccess = false;
-                                        break;
-                                }
-                            }
-                            else if (c == '-' || c == '+')
-                            {
-                                myBuffer.Append(c);
-                                switch (numberPart)
-                                {
-                                    case NumberPart.E://after e
-                                        numberPart = NumberPart.ESign;
-                                        break;
-                                    default:
-                                        NotifyError();
-                                        IsSuccess = false;
-                                        break;
-                                }
-                            }
-                            else if (c == ']')
-                            {
-                                NewValue(myBuffer, currentValueHint);
-                                //--------------------------
-                                myBuffer.Length = 0; //clear 
-                                EndArray();
-
-                                if (elemKindStack.Count > 0)
-                                {
-
-                                    currentElementKind = elemKindStack.Pop();
-                                }
-                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+                                ReadIdentifier(this, i, out int latestIndex);
+                                //new key from literal string
+                                NewKey(i, latestIndex - i + 1);//event
+                                i = latestIndex;
+                                currentState = ParsingState._3_WaitForColon;
                             }
                             else if (c == '}')
                             {
-                                NewValue(myBuffer, currentValueHint);
-                                myBuffer.Length = 0; //clear
+                                //no key
+                                //this is empty object
                                 EndObject();
-
-                                if (elemKindStack.Count > 0)
-                                {
-                                    currentElementKind = elemKindStack.Pop();
-                                }
-                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
-                            }
-                            else if (c == ',')
-                            {
-                                NewValue(myBuffer, currentValueHint);
-                                //clear
-                                myBuffer.Length = 0;
-                                switch (currentElementKind)
-                                {
-                                    default: throw new NotSupportedException();
-                                    case EsElementKind.Array:
-                                        isInKeyPart = false;
-                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
-                                        break;
-                                    case EsElementKind.Object:
-                                        isInKeyPart = true;
-                                        currentState = ParsingState._1_ObjectKey;
-                                        break;
-                                }
-                            }
-                            else if (c == '\r')
-                            {
-                                //stop here
-                                if (i < j - 1)
-                                {
-                                    if (sourceBuffer[i + 1] == '\n')
-                                    {
-                                        //\r\n
-                                        i++;
-
-                                        NewValue(myBuffer, currentValueHint);
-                                        //clear
-                                        myBuffer.Length = 0;
-
-                                        switch (currentElementKind)
-                                        {
-                                            default: throw new NotSupportedException();
-                                            case EsElementKind.Array:
-                                                isInKeyPart = false;
-                                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
-                                                break;
-                                            case EsElementKind.Object:
-                                                isInKeyPart = true;
-                                                currentState = ParsingState._1_ObjectKey;
-                                                break;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        //only R
-                                    }
-                                }
-                            }
-                            else if (c == '\n')
-                            {
-                                //stop 
-                                NewValue(myBuffer, currentValueHint);
-                                //clear
-                                myBuffer.Length = 0;
-
-                                switch (currentElementKind)
-                                {
-                                    default: throw new NotSupportedException();
-                                    case EsElementKind.Array:
-                                        isInKeyPart = false;
-                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
-                                        break;
-                                    case EsElementKind.Object:
-                                        isInKeyPart = true;
-                                        currentState = ParsingState._1_ObjectKey;
-                                        break;
-                                }
+                                currentElementKind = _isObjectStack.Pop();
                             }
                             else
                             {
-
                                 IsSuccess = false;
                                 NotifyError();
+                                //and stop
+                                return;
                             }
                         }
                         break;
-                    case ParsingState._8_CollectIdentifier:
+                    case ParsingState._3_WaitForColon:
                         {
-
-                            currentValueHint = ValueHint.Identifier;
-                            switch (c)
+                            if (c == ':')
                             {
-                                case ':':
-                                    //stop collect identifier and  
-                                    if (isInKeyPart)
-                                    {
-                                        NewKey(myBuffer, currentValueHint);
-                                        myBuffer.Length = 0;//clear
-                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //object's value part
-                                        isInKeyPart = false;
-                                    }
-                                    else
-                                    {
-                                        NotifyError();
-                                        IsSuccess = false;
-                                    }
-                                    break;
-                                case '}':
-                                    if (isInKeyPart)
-                                    {
-                                        NotifyError();
-                                        IsSuccess = false;
-                                    }
-                                    else
-                                    {
-                                        NewValue(myBuffer, currentValueHint);
-                                        myBuffer.Length = 0; //clear 
-                                        EndObject();
+                                //value of the key
+                                currentState = ParsingState._1_ExpectObjectValueOrArrayElement;
+                            }
+                            else
+                            {
+                                IsSuccess = false;
+                                NotifyError();
+                                return;
+                            }
+                        }
+                        break;
+                    case ParsingState._4_WaitForCommaOrEnd:
+                        {
+                            //after literal string, literal number, array, object
+                            //
+                            if (c == ',')
+                            {
+                                Comma();
 
-                                        if (elemKindStack.Count > 0)
-                                        {
-                                            currentElementKind = elemKindStack.Pop();
-                                        }
-                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
-                                    }
-                                    break;
-                                case ']':
-                                    if (isInKeyPart)
-                                    {
-                                        NotifyError();
-                                        IsSuccess = false;
-                                    }
-                                    else
-                                    {
-                                        NewValue(myBuffer, currentValueHint);
-                                        myBuffer.Length = 0; //clear 
-                                        EndArray();
-
-                                        if (elemKindStack.Count > 0)
-                                        {
-
-                                            currentElementKind = elemKindStack.Pop();
-                                        }
-                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
-                                    }
-                                    break;
-                                case ',':
-                                    if (isInKeyPart)
-                                    {
-                                        NotifyError();
-                                        IsSuccess = false;
-                                    }
-                                    else
-                                    {
-                                        NewValue(myBuffer, currentValueHint);
-                                        myBuffer.Length = 0; //clear 
-                                        switch (currentElementKind)
-                                        {
-                                            default: throw new NotSupportedException();
-                                            case EsElementKind.Array:
-                                                isInKeyPart = false;
-                                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
-                                                break;
-                                            case EsElementKind.Object:
-                                                isInKeyPart = true;
-                                                currentState = ParsingState._1_ObjectKey;
-                                                break;
-                                        }
-                                    }
-                                    break;
-                                default:
-
-                                    if (char.IsWhiteSpace(c))
-                                    {
-                                        //stop collect identifier***
-                                        //wait for :                                
-                                        currentState = ParsingState._4_FinishKeyPartWaitForSemiColon;
-                                    }
-                                    else
-                                    {
-                                        myBuffer.Append(c);
-                                    }
-                                    break;
+                                if (currentElementKind == EsElementKind.Object)
+                                {
+                                    currentState = ParsingState._2_ExpectObjectKey;
+                                }
+                                else if (currentElementKind == EsElementKind.Array)
+                                {
+                                    currentState = ParsingState._1_ExpectObjectValueOrArrayElement;
+                                }
+                                else
+                                {
+                                    IsSuccess = false;
+                                    NotifyError();
+                                    return;
+                                }
+                            }
+                            else if (c == '}')
+                            {
+                                EndObject();
+                                currentElementKind = _isObjectStack.Pop();
+                            }
+                            else if (c == ']')
+                            {
+                                EndArray();
+                                currentElementKind = _isObjectStack.Pop();
+                            }
+                            else
+                            {
+                                IsSuccess = false;
+                                NotifyError();
+                                return;
                             }
                         }
                         break;
                 }
             }
-
-            OnParseEnd();
-
         }
 
-        static uint ParseSingleChar(char c1)
+        //        public virtual void Parse(char[] sourceBuffer)
+        //        {
+        //            OnParseStart();
+        //            //--------------------------------------------------------------
+        //            EsElementKind currentElementKind = EsElementKind.Unknown;
+        //            _elemKindStack.Clear();
+        //            IsSuccess = true;
+        //            _myBuffer.Length = 0;//reset
+        //            _sourceBuffer = sourceBuffer;
+        //            //--------------------------------------------------------------
+        //            ParsingState currentState = ParsingState._0_Init;
+        //            int j = sourceBuffer.Length;
+        //            bool isInKeyPart = false;
+
+        //            //WARNING: custom version, about ending with comma
+        //            //we may use implicit comma feature, 
+        //            //in case we start new line but forget a comma,
+        //            //we auto add comma 
+
+        //            //bool implicitComma = false;
+        //            char openStringWithChar = '"';
+        //            _i = 0;
+        //            ValueHint currentValueHint = ValueHint.Unknown;
+        //            for (_i = 0; _i < j; _i++)
+        //            {
+
+        //                if (!IsSuccess)
+        //                {
+        //                    OnError(ref _i);
+        //                    //handle the error ****
+        //                    //#if DEBUG
+        //                    // if (dbug_EnableLogParser)
+        //                    // {
+        //                    //   dbugDataFormatParser.IndentLevel = myKeyStack.Count;
+        //                    //   dbugDataFormatParser.WriteLine("fail at pos=" + i + " on " + currentState);
+        //                    // }
+        //                    //#endif
+        //                    break; //break from loop
+        //                }
+
+        //                //--------------------------
+        //                char c = sourceBuffer[_i];
+        //#if DEBUG
+        //                if (dbug_EnableLogParser)
+        //                {
+        //                    dbugEsParserLogger.WriteLine(new string('\t', _elemKindStack.Count) + _i + " ," + c.ToString() + "," + currentState);
+        //                }
+        //#endif
+        //                //--------------------------  
+        //                switch (currentState)
+        //                {
+        //                    case ParsingState._0_Init:
+        //                        {
+        //                            switch (c)
+        //                            {
+        //                                case '{':
+        //                                    {
+        //                                        //flush prev whitespace?
+        //                                        _startCollect = _i;
+        //                                        _collectLen = 1;
+        //                                        BeginObject(); //event
+        //                                        //change current element kind after notification
+        //                                        _elemKindStack.Push(currentElementKind);
+        //                                        currentElementKind = EsElementKind.Object;
+        //                                        _myBuffer.Length = 0;//clear
+        //                                        isInKeyPart = true;
+        //                                        //expect object key
+        //                                        currentState = ParsingState._1_ObjectKey;
+        //                                    }
+        //                                    break;
+        //                                case '[':
+        //                                    {
+        //                                        BeginArray();//event
+        //                                        _elemKindStack.Push(currentElementKind);
+        //                                        currentElementKind = EsElementKind.Array;
+        //                                        isInKeyPart = false;
+        //                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //on the same state -- value state
+        //                                    }
+        //                                    break;
+        //                                case '/':
+        //                                    {
+        //                                        //-----------------------
+        //                                        //extension: comment syntax
+        //                                        //is not end
+        //                                        if (_i < j - 1)
+        //                                        {
+        //                                            char next_c = sourceBuffer[_i + 1];
+        //                                            if (next_c == '/')
+        //                                            {
+        //                                                int latestIndex = _i + 1;
+        //                                                ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                                _i = latestIndex;
+        //                                            }
+        //                                            else if (next_c == '*')
+        //                                            {
+        //                                                //inline comment
+        //                                                int latestIndex = _i + 1;
+        //                                                ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                                _i = latestIndex;
+        //                                            }
+        //                                            else
+        //                                            {
+        //                                                IsSuccess = false;
+        //                                                NotifyError();
+        //                                            }
+        //                                        }
+        //                                    }
+        //                                    break;
+        //                                case '"':
+        //                                case '\'':
+        //                                    {
+        //                                        //TODO: string escape here
+        //                                        currentValueHint = ValueHint.StringLiteral;
+
+        //                                        int latestIndex = _i + 1;
+        //                                        ReadStringLiteral(sourceBuffer, _i, ref latestIndex);
+        //                                        _i = latestIndex;
+
+        //                                        openStringWithChar = c;
+        //                                        //string val
+        //                                        currentState = ParsingState._2_CollectStringLiteral;
+        //                                    }
+        //                                    break;
+        //                                default:
+        //                                    {
+        //                                        if (char.IsWhiteSpace(c))
+        //                                        {
+        //                                            //same state
+        //                                            continue;
+        //                                        }
+        //                                        else if (char.IsLetter(c) || c == '_')
+        //                                        {
+        //                                            //parse as  true, false, null 
+        //                                            //or other iden
+        //                                            //parse as idenitifer
+
+        //                                        }
+        //                                        else if (char.IsDigit(c) || (c == '-'))
+        //                                        {
+        //                                            //TODO:
+        //                                            //support extension + 
+        //                                            _startCollect = _i;
+        //                                            _collectLen = 1;
+
+        //                                            _myBuffer.Append(c);
+
+        //                                            //number
+        //                                            currentValueHint = ValueHint.IntegerNumber;
+
+        //                                            currentState = ParsingState._7_CollectNumberLiteral;
+
+        //                                            int latest = _i + 1;
+        //                                            ReadNumberLiteral(_sourceBuffer, _i, ref latest);
+        //                                        }
+        //                                        else
+        //                                        {
+        //                                            IsSuccess = false;
+        //                                            NotifyError();
+        //                                        }
+
+        //                                    }
+        //                                    break;
+        //                            }
+        //                        }
+        //                        break;
+        //                    case ParsingState._1_ObjectKey:
+        //                        {
+        //                            //TODO: review here again
+        //                            //in json spec, not support '\'' in keypart
+
+        //                            if (c == '"' || c == '\'')
+        //                            {
+        //                                //**                                
+        //                                openStringWithChar = c;
+        //                                currentValueHint = ValueHint.StringLiteral;
+        //                                currentState = ParsingState._2_CollectStringLiteral;
+
+        //                                int latestIndex = _i + 1;
+        //                                ReadStringLiteral(sourceBuffer, _i, ref latestIndex);
+
+        //                                _myBuffer.ValueHint = currentValueHint;
+        //                                _myBuffer.StartCollectAt = _i;
+        //                                _myBuffer.Length = latestIndex - _i;
+        //                                NewKey(_myBuffer);
+
+        //                                _myBuffer.Length = 0;//clear
+
+        //                                currentState = ParsingState._4_FinishKeyPartWaitForSemiColon;
+        //                                _i = latestIndex;
+        //                            }
+        //                            else if (char.IsWhiteSpace(c))
+        //                            {
+        //                                continue;
+        //                            }
+        //                            else if (c == '}')
+        //                            {
+        //                                //this is empty 
+        //                                if (currentElementKind != EsElementKind.Object)
+        //                                {
+        //                                    NotifyError();
+        //                                    IsSuccess = false;
+        //                                }
+        //                                else
+        //                                {
+        //#if DEBUG
+        //                                    if (_myBuffer.Length > 0)
+        //                                    {
+        //                                        //error at this state
+        //                                    }
+        //#endif
+        //                                    isInKeyPart = false;
+        //                                    EndObject();//end current object 
+        //                                                //1. close current object
+        //                                                //2. pop current object and  switch back 
+        //                                                //to prev state ***
+        //                                    if (_elemKindStack.Count > 0)
+        //                                    {
+        //                                        //switch back      
+        //                                        currentElementKind = _elemKindStack.Pop();
+        //                                    }
+        //                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                                }
+        //                            }
+        //                            else if (char.IsLetter(c) || c == '_')
+        //                            {
+        //                                //null, true, false or other iden
+        //                                currentValueHint = ValueHint.Identifier;
+        //                                _myBuffer.Append(c); //collect identifier
+        //                                currentState = ParsingState._8_CollectIdentifier; //collect identifier
+        //                            }
+        //                            else if (c == '/')
+        //                            {
+        //                                //-----------------------
+        //                                //comment syntax
+        //                                if (_i < j - 1)
+        //                                {
+        //                                    char next_c = sourceBuffer[_i + 1];
+        //                                    if (next_c == '/')
+        //                                    {
+        //                                        int latestIndex = _i + 1;
+        //                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                        _i = latestIndex;
+        //                                    }
+        //                                    else if (next_c == '*')
+        //                                    {
+        //                                        //inline comment
+        //                                        int latestIndex = _i + 1;
+        //                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                        _i = latestIndex;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        IsSuccess = false;
+        //                                        NotifyError();
+        //                                    }
+        //                                }
+        //                                //-----------------------
+        //                            }
+        //                            else
+        //                            {
+        //                                //extension***
+        //                                //
+
+        //                                //number or other token will error in keypart***
+        //                                NotifyError();
+        //                                IsSuccess = false;
+        //                                break;
+        //                            }
+        //                        }
+        //                        break;
+        //                    //case ParsingState._2_CollectStringLiteral:
+        //                    //    {
+        //                    //        //collecting string 
+        //                    //        if (c == '\\')
+        //                    //        {
+        //                    //            currentState = ParsingState._3_StringEscape;
+        //                    //        }
+        //                    //        else if (c == openStringWithChar)
+        //                    //        {
+        //                    //            //close current string collection
+        //                    //            currentValueHint = ValueHint.StringLiteral;
+
+        //                    //            if (isInKeyPart)
+        //                    //            {
+        //                    //                _myBuffer.ValueHint = currentValueHint;
+        //                    //                NewKey(_myBuffer);
+        //                    //                _myBuffer.Length = 0;//clear
+        //                    //                currentState = ParsingState._4_FinishKeyPartWaitForSemiColon;
+        //                    //            }
+        //                    //            else
+        //                    //            {
+        //                    //                _myBuffer.ValueHint = currentValueHint;
+        //                    //                NewValue(_myBuffer);
+        //                    //                _myBuffer.Length = 0;//clear
+        //                    //                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+
+        //                    //            }
+        //                    //        }
+        //                    //        else
+        //                    //        {
+        //                    //            _myBuffer.Append(c);
+        //                    //        }
+        //                    //    }
+        //                    //    break;
+        //                    //case ParsingState._3_StringEscape:
+        //                    //    {
+        //                    //        switch (c)
+        //                    //        {
+        //                    //            case '"':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\"');
+        //                    //                }
+        //                    //                break;
+        //                    //            case '\'':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\'');
+        //                    //                }
+        //                    //                break;
+        //                    //            case '/':
+        //                    //                {
+        //                    //                    _myBuffer.Append('/');
+        //                    //                }
+        //                    //                break;
+        //                    //            case '\\':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\\');
+        //                    //                }
+        //                    //                break;
+        //                    //            case 'b':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\b');
+        //                    //                }
+        //                    //                break;
+        //                    //            case 'f':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\f');
+        //                    //                }
+        //                    //                break;
+        //                    //            case 'r':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\r');
+        //                    //                }
+        //                    //                break;
+        //                    //            case 'n':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\n');
+        //                    //                }
+        //                    //                break;
+        //                    //            case 't':
+        //                    //                {
+        //                    //                    _myBuffer.Append('\t');
+        //                    //                }
+        //                    //                break;
+        //                    //            case 'u':
+        //                    //                {
+        //                    //                    //unicode char in hexa digit
+        //                    //                    //TODO: review here if we have enough char to parse ***
+        //                    //                    if (_i < j - 4)
+        //                    //                    {
+        //                    //                        //json spec
+        //                    //                        //this follow by  4 chars
+        //                    //                        //for extension we check if it match with 4 chars or not 
+        //                    //                        uint c_uint = ParseUnicode(
+        //                    //                         sourceBuffer[_i + 1],
+        //                    //                         sourceBuffer[_i + 2],
+        //                    //                         sourceBuffer[_i + 3],
+        //                    //                         sourceBuffer[_i + 4]);
+        //                    //                        _myBuffer.Append((char)c_uint);
+        //                    //                        _i += 4;
+        //                    //                    }
+        //                    //                    else
+        //                    //                    {
+        //                    //                        //error
+        //                    //                        IsSuccess = false;
+        //                    //                        NotifyError();
+        //                    //                    }
+        //                    //                }
+        //                    //                break;
+        //                    //            default:
+        //                    //                {
+        //                    //                    NotifyError();
+        //                    //                    IsSuccess = false;
+        //                    //                }
+        //                    //                break;
+        //                    //        }
+        //                    //        //switch back to state 2_collectStringLiteral
+        //                    //        currentState = ParsingState._2_CollectStringLiteral;
+        //                    //    }
+        //                    //    break;
+        //                    case ParsingState._4_FinishKeyPartWaitForSemiColon:
+        //                        {
+        //                            //wait for :
+        //                            if (c == ':')
+        //                            {
+        //                                _myBuffer.Length = 0;//clear
+        //                                isInKeyPart = false;
+        //                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //object's value part                                
+        //                            }
+        //                            else if (char.IsWhiteSpace(c))
+        //                            {
+        //                                continue;
+        //                            }
+        //                            else if (c == '/')
+        //                            {
+        //                                //-----------------------
+        //                                //comment syntax
+        //                                if (_i < j - 1)
+        //                                {
+        //                                    char next_c = sourceBuffer[_i + 1];
+        //                                    if (next_c == '/')
+        //                                    {
+        //                                        int latestIndex = _i + 1;
+        //                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                        _i = latestIndex;
+        //                                    }
+        //                                    else if (next_c == '*')
+        //                                    {
+        //                                        //inline comment
+        //                                        int latestIndex = _i + 1;
+        //                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                        _i = latestIndex;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        IsSuccess = false;
+        //                                        NotifyError();
+        //                                    }
+        //                                }
+        //                                //-----------------------
+        //                            }
+        //                            else
+        //                            {
+        //                                //TODO: add recovery extension here
+        //                                NotifyError();
+        //                                IsSuccess = false;
+        //                                break;
+        //                            }
+        //                        }
+        //                        break;
+        //                    case ParsingState._5_ExpectObjectValueOrArrayElement:
+        //                        {
+        //                            //in value part *** 
+        //                            //of object or array 
+
+        //                            if (c == '"' || c == '\'')
+        //                            {
+        //                                //TODO: string escape here
+        //                                openStringWithChar = c;
+        //                                //string val
+        //                                currentState = ParsingState._2_CollectStringLiteral;
+        //                            }
+        //                            else if (char.IsDigit(c) || (c == '-'))
+        //                            {
+        //                                //TODO:
+        //                                //support extension + 
+        //                                _myBuffer.Append(c);
+        //                                //number
+        //                                currentValueHint = ValueHint.IntegerNumber;
+
+        //                                currentState = ParsingState._7_CollectNumberLiteral;
+
+        //                                int latest = _i + 1;
+        //                                ReadNumberLiteral(_sourceBuffer, _i, ref latest);
+        //                                _i = latest;
+        //                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                            }
+        //                            else if (c == '{')
+        //                            {
+        //                                //store current object in stack
+        //                                BeginObject();
+        //                                _elemKindStack.Push(currentElementKind);
+        //                                currentElementKind = EsElementKind.Object;
+        //                                isInKeyPart = true;
+        //                                currentState = ParsingState._1_ObjectKey;
+        //                            }
+        //                            else if (c == '[')
+        //                            {
+        //                                BeginArray();
+        //                                _elemKindStack.Push(currentElementKind);
+        //                                currentElementKind = EsElementKind.Array;
+        //                                isInKeyPart = false;
+        //                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //on the same state -- value state
+        //                            }
+        //                            else if (c == ']')
+        //                            {
+        //                                if (currentElementKind != EsElementKind.Array)
+        //                                {
+        //                                    NotifyError();
+        //                                    IsSuccess = false;
+        //                                }
+        //                                else
+        //                                {
+        //                                    EndArray();//end current array
+
+        //                                    if (_elemKindStack.Count > 0)
+        //                                    {
+
+        //                                        currentElementKind = _elemKindStack.Pop();
+        //                                    }
+        //                                }
+        //                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                            }
+        //                            else if (c == '/')
+        //                            {
+        //                                //-----------------------
+        //                                //comment syntax
+        //                                if (_i < j - 1)
+        //                                {
+        //                                    char next_c = sourceBuffer[_i + 1];
+        //                                    if (next_c == '/')
+        //                                    {
+        //                                        int latestIndex = _i + 1;
+        //                                        ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                        _i = latestIndex;
+        //                                    }
+        //                                    else if (next_c == '*')
+        //                                    {
+        //                                        //inline comment
+        //                                        int latestIndex = _i + 1;
+        //                                        ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                        _i = latestIndex;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        IsSuccess = false;
+        //                                        NotifyError();
+        //                                    }
+        //                                }
+        //                                //-----------------------
+        //                            }
+        //                            else if (char.IsWhiteSpace(c))
+        //                            {
+        //                                continue;
+        //                            }
+        //                            else
+        //                            {
+        //                                //we collect other character into buffer
+        //                                //so we can collect 
+        //                                //null, true, false
+        //                                //or other identifier  ***
+        //                                currentState = ParsingState._8_CollectIdentifier;
+        //                                _myBuffer.Append(c);
+        //                            }
+        //                        }
+        //                        break;
+        //                    case ParsingState._6_AfterObjectValueOrArrayElement:
+        //                        {
+        //                            switch (c)
+        //                            {
+        //                                case ',':
+        //                                    switch (currentElementKind)
+        //                                    {
+        //                                        default: throw new NotSupportedException();
+        //                                        case EsElementKind.Object:
+        //                                            currentState = ParsingState._1_ObjectKey;
+        //                                            isInKeyPart = true;
+        //                                            break;
+        //                                        case EsElementKind.Array:
+        //                                            //array
+        //                                            currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+        //                                            break;
+        //                                    }
+        //                                    break;
+        //                                case ']':
+        //                                    if (currentElementKind != EsElementKind.Array)
+        //                                    {
+        //                                        //error
+        //                                        throw new NotSupportedException();
+        //                                    }
+        //                                    EndArray();
+
+        //                                    //close current array
+        //                                    //then push value back to prev stored value
+        //                                    if (_elemKindStack.Count > 0)
+        //                                    {
+
+        //                                        //current value must be array
+        //                                        currentElementKind = _elemKindStack.Pop();
+        //                                    }
+        //                                    break;
+        //                                case '}':
+
+        //                                    if (currentElementKind != EsElementKind.Object)
+        //                                    {
+        //                                        //error
+        //                                        throw new NotSupportedException();
+        //                                    }
+        //                                    EndObject();
+
+        //                                    if (_elemKindStack.Count > 0)
+        //                                    {
+        //                                        currentElementKind = _elemKindStack.Pop();
+        //                                    }
+        //                                    currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                                    break;
+        //                                case '/':
+        //                                    {
+        //                                        //-----------------------
+        //                                        //comment syntax
+        //                                        if (_i < j - 1)
+        //                                        {
+        //                                            char next_c = sourceBuffer[_i + 1];
+        //                                            if (next_c == '/')
+        //                                            {
+        //                                                int latestIndex = _i + 1;
+        //                                                ReadSingleLineComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                                _i = latestIndex;
+        //                                            }
+        //                                            else if (next_c == '*')
+        //                                            {
+        //                                                //inline comment
+        //                                                int latestIndex = _i + 1;
+        //                                                ReadBlockComment(sourceBuffer, latestIndex + 1, ref latestIndex);
+        //                                                _i = latestIndex;
+        //                                            }
+        //                                            else
+        //                                            {
+        //                                                IsSuccess = false;
+        //                                                NotifyError();
+        //                                            }
+        //                                        }
+        //                                        //-----------------------
+        //                                    }
+        //                                    break;
+        //                                default:
+        //                                    //?
+        //                                    //TODO: error recovery / or handle error with some extension 
+        //                                    break;
+        //                            }
+        //                        }
+        //                        break;
+        //                    case ParsingState._7_CollectNumberLiteral:
+        //                        {
+        //                            if (c == ']')
+        //                            {
+        //                                _myBuffer.ValueHint = currentValueHint;
+        //                                NewValue(_myBuffer);
+        //                                //--------------------------
+        //                                _myBuffer.Length = 0; //clear 
+        //                                EndArray();
+
+        //                                if (_elemKindStack.Count > 0)
+        //                                {
+
+        //                                    currentElementKind = _elemKindStack.Pop();
+        //                                }
+        //                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                            }
+        //                            else if (c == '}')
+        //                            {
+        //                                _myBuffer.ValueHint = currentValueHint;
+        //                                NewValue(_myBuffer);
+        //                                _myBuffer.Length = 0; //clear
+        //                                EndObject();
+
+        //                                if (_elemKindStack.Count > 0)
+        //                                {
+        //                                    currentElementKind = _elemKindStack.Pop();
+        //                                }
+        //                                currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                            }
+        //                            else if (c == ',')
+        //                            {
+        //                                _myBuffer.ValueHint = currentValueHint;
+        //                                NewValue(_myBuffer);
+        //                                //clear
+        //                                _myBuffer.Length = 0;
+        //                                switch (currentElementKind)
+        //                                {
+        //                                    default: throw new NotSupportedException();
+        //                                    case EsElementKind.Array:
+        //                                        isInKeyPart = false;
+        //                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+        //                                        break;
+        //                                    case EsElementKind.Object:
+        //                                        isInKeyPart = true;
+        //                                        currentState = ParsingState._1_ObjectKey;
+        //                                        break;
+        //                                }
+        //                            }
+        //                            else if (c == '\r')
+        //                            {
+        //                                //stop here
+        //                                if (_i < j - 1)
+        //                                {
+        //                                    if (sourceBuffer[_i + 1] == '\n')
+        //                                    {
+        //                                        //\r\n
+        //                                        _i++;
+
+        //                                        _myBuffer.ValueHint = currentValueHint;
+        //                                        NewValue(_myBuffer);
+        //                                        //clear
+        //                                        _myBuffer.Length = 0;
+
+        //                                        switch (currentElementKind)
+        //                                        {
+        //                                            default: throw new NotSupportedException();
+        //                                            case EsElementKind.Array:
+        //                                                isInKeyPart = false;
+        //                                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+        //                                                break;
+        //                                            case EsElementKind.Object:
+        //                                                isInKeyPart = true;
+        //                                                currentState = ParsingState._1_ObjectKey;
+        //                                                break;
+        //                                        }
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        //only R
+        //                                    }
+        //                                }
+        //                            }
+        //                            else if (c == '\n')
+        //                            {
+        //                                //stop 
+        //                                _myBuffer.ValueHint = currentValueHint;
+        //                                NewValue(_myBuffer);
+        //                                //clear
+        //                                _myBuffer.Length = 0;
+
+        //                                switch (currentElementKind)
+        //                                {
+        //                                    default: throw new NotSupportedException();
+        //                                    case EsElementKind.Array:
+        //                                        isInKeyPart = false;
+        //                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+        //                                        break;
+        //                                    case EsElementKind.Object:
+        //                                        isInKeyPart = true;
+        //                                        currentState = ParsingState._1_ObjectKey;
+        //                                        break;
+        //                                }
+        //                            }
+        //                            else
+        //                            {
+
+        //                                IsSuccess = false;
+        //                                NotifyError();
+        //                            }
+        //                        }
+        //                        break;
+        //                    case ParsingState._8_CollectIdentifier:
+        //                        {
+
+        //                            currentValueHint = ValueHint.Identifier;
+        //                            switch (c)
+        //                            {
+        //                                case ':':
+        //                                    //stop collect identifier and  
+        //                                    if (isInKeyPart)
+        //                                    {
+        //                                        _myBuffer.ValueHint = currentValueHint;
+        //                                        NewValue(_myBuffer);
+        //                                        _myBuffer.Length = 0;//clear
+        //                                        currentState = ParsingState._5_ExpectObjectValueOrArrayElement; //object's value part
+        //                                        isInKeyPart = false;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        NotifyError();
+        //                                        IsSuccess = false;
+        //                                    }
+        //                                    break;
+        //                                case '}':
+        //                                    if (isInKeyPart)
+        //                                    {
+        //                                        NotifyError();
+        //                                        IsSuccess = false;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        _myBuffer.ValueHint = currentValueHint;
+        //                                        NewValue(_myBuffer);
+        //                                        _myBuffer.Length = 0; //clear 
+        //                                        EndObject();
+
+        //                                        if (_elemKindStack.Count > 0)
+        //                                        {
+        //                                            currentElementKind = _elemKindStack.Pop();
+        //                                        }
+        //                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                                    }
+        //                                    break;
+        //                                case ']':
+        //                                    if (isInKeyPart)
+        //                                    {
+        //                                        NotifyError();
+        //                                        IsSuccess = false;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        _myBuffer.ValueHint = currentValueHint;
+        //                                        NewValue(_myBuffer);
+        //                                        _myBuffer.Length = 0; //clear 
+        //                                        EndArray();
+
+        //                                        if (_elemKindStack.Count > 0)
+        //                                        {
+        //                                            currentElementKind = _elemKindStack.Pop();
+        //                                        }
+        //                                        currentState = ParsingState._6_AfterObjectValueOrArrayElement;
+        //                                    }
+        //                                    break;
+        //                                case ',':
+        //                                    if (isInKeyPart)
+        //                                    {
+        //                                        NotifyError();
+        //                                        IsSuccess = false;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        _myBuffer.ValueHint = currentValueHint;
+        //                                        NewValue(_myBuffer);
+        //                                        _myBuffer.Length = 0; //clear 
+        //                                        switch (currentElementKind)
+        //                                        {
+        //                                            default: throw new NotSupportedException();
+        //                                            case EsElementKind.Array:
+        //                                                isInKeyPart = false;
+        //                                                currentState = ParsingState._5_ExpectObjectValueOrArrayElement;
+        //                                                break;
+        //                                            case EsElementKind.Object:
+        //                                                isInKeyPart = true;
+        //                                                currentState = ParsingState._1_ObjectKey;
+        //                                                break;
+        //                                        }
+        //                                    }
+        //                                    break;
+        //                                default:
+
+        //                                    if (char.IsWhiteSpace(c))
+        //                                    {
+        //                                        //stop collect identifier***
+        //                                        //wait for :                                
+        //                                        currentState = ParsingState._4_FinishKeyPartWaitForSemiColon;
+        //                                    }
+        //                                    else
+        //                                    {
+        //                                        _myBuffer.Append(c);
+        //                                    }
+        //                                    break;
+        //                            }
+        //                        }
+        //                        break;
+        //                }
+        //            }
+
+
+        //            //-------------
+        //            switch (currentState)
+        //            {
+        //                case ParsingState._2_CollectStringLiteral:
+        //                    {
+        //                        if (_myBuffer.Length > 0)
+        //                        {
+        //                            _myBuffer.ValueHint = currentValueHint;
+        //                            NewValue(_myBuffer);
+        //                        }
+        //                    }
+        //                    break;
+        //                case ParsingState._7_CollectNumberLiteral:
+        //                    {
+        //                        if (_myBuffer.Length > 0)
+        //                        {
+        //                            _myBuffer.ValueHint = currentValueHint;
+        //                            NewValue(_myBuffer);
+        //                        }
+        //                    }
+        //                    break;
+        //            }
+        //            //-------------
+        //            OnParseEnd();
+
+        //        }
+
+        static uint ParseHex(char c1)
         {
             switch (c1)
             {
@@ -1042,14 +1671,13 @@ namespace SharpConnect.Data
         }
         static uint ParseUnicode(char c1, char c2, char c3, char c4)
         {
-            return (ParseSingleChar(c1) << 16) |
-                    (ParseSingleChar(c2) << 8) |
-                    (ParseSingleChar(c3) << 4) |
-                    (ParseSingleChar(c4) << 0);
+            return (ParseHex(c1) << 12) |
+                    (ParseHex(c2) << 8) |
+                    (ParseHex(c3) << 4) |
+                    (ParseHex(c4) << 0);
         }
-
-
     }
+
 
 
 
@@ -1065,7 +1693,7 @@ namespace SharpConnect.Data
 
         Stack<string> _keyStack = new Stack<string>();
         Stack<object> _elemStack = new Stack<object>();
-        object _currentElem = null;
+        object _currentValue = null;
         string _currentKey = null;
 
         public EsParserBase()
@@ -1088,34 +1716,31 @@ namespace SharpConnect.Data
                 _keyStack.Push(_currentKey);
             }
             _currentKey = null;
-            if (_currentElem != null)
+            if (_currentValue != null)
             {
-                _elemStack.Push(_currentElem);
+                _elemStack.Push(_currentValue);
             }
-            _currentElem = CreateElement();
+            _currentValue = CreateElement();
         }
         void InternalPopCurrentObjectAndPushToPrevContext()
         {
             //current element should be object
-            object c_object = _currentElem;
+            object c_object = _currentValue;
             if (_elemStack.Count > 0)
             {
                 //pop from stack
-                _currentElem = _elemStack.Pop();
+                _currentValue = _elemStack.Pop();
                 _currentKey = null;
-                if (c_object == _currentElem)
+                if (c_object == _currentValue)
                 {
                     throw new System.Exception();
                 }
-
-                E c_elem = null;
-                A c_arr = null;
-                if ((c_elem = _currentElem as E) != null)
+                if (_currentValue is E c_elem)
                 {
                     _currentKey = _keyStack.Pop();
                     AddElementAttribute(c_elem, _currentKey, c_object);
                 }
-                else if ((c_arr = _currentElem as A) != null)
+                else if (_currentValue is A c_arr)
                 {
                     AddArrayElement(c_arr, c_object);
                 }
@@ -1136,11 +1761,11 @@ namespace SharpConnect.Data
                 _keyStack.Push(_currentKey);
             }
             _currentKey = null;
-            if (_currentElem != null)
+            if (_currentValue != null)
             {
-                _elemStack.Push(_currentElem);
+                _elemStack.Push(_currentValue);
             }
-            _currentElem = CreateArray();
+            _currentValue = CreateArray();
         }
         protected override void EndArray()
         {
@@ -1150,74 +1775,80 @@ namespace SharpConnect.Data
         {
 
         }
-        protected override void NewKey(StringBuilder tmpBuffer, ValueHint valueHint)
+        protected override void NewKey(int start, int len)
         {
-            _currentKey = tmpBuffer.ToString();
+            _currentKey = new string(_sourceBuffer, start, len);
         }
-        protected override void NewValue(StringBuilder tmpBuffer, ValueHint valueHint)
+        protected override void NewValue(int start, int len)
         {
+            //current object
+            string iden = "";
             object c_object = null;
-            switch (valueHint)
+            switch (CollectedValueHint)
             {
-                default:
-                case ValueHint.Comment:
-                    throw new System.NotSupportedException();
-                case ValueHint.Identifier:
-                    string iden = tmpBuffer.ToString();
-                    switch (iden)
+                default: throw new NotSupportedException();
+                case EsValueHint.Identifier:
                     {
-                        case "true":
-                            c_object = true;
-                            break;
-                        case "false":
-                            c_object = false;
-                            break;
-                        case "null":
-                            c_object = null;
-                            break;
-                        default:
-                            c_object = iden;
-                            break;
+                        iden = new string(_sourceBuffer, start, len);
+                        switch (iden)
+                        {
+                            case "true":
+                                c_object = true;
+                                break;
+                            case "false":
+                                c_object = false;
+                                break;
+                            case "null":
+                                c_object = null;
+                                break;
+                            default:
+                                c_object = iden;
+                                break;
+                        }
                     }
                     break;
-                case ValueHint.StringLiteral:
-                    c_object = tmpBuffer.ToString();
+                case EsValueHint.StringLiteral:
+                    c_object = new string(_sourceBuffer, start + 1, len - 2);
                     break;
-                case ValueHint.IntegerNumber:
-                    c_object = int.Parse(tmpBuffer.ToString());
+                case EsValueHint.IntegerNumber:
+                    iden = new string(_sourceBuffer, start, len);
+                    c_object = int.Parse(iden);
                     break;
-                case ValueHint.NumberWithFractionPart:
-                case ValueHint.NumberWithSignedExponentialPart:
-                case ValueHint.NumberWithExponentialPart:
-                    c_object = double.Parse(tmpBuffer.ToString());
+                case EsValueHint.NumberWithFractionPart:
+                case EsValueHint.NumberWithExponentialPart:
+                    iden = new string(_sourceBuffer, start, len);
+                    c_object = double.Parse(iden);
                     break;
-
             }
 
-            E c_elem = null;
-            A c_arr = null;
-            if ((c_elem = _currentElem as E) != null)
+            if (_currentValue is E c_elem)
             {
+
                 AddElementAttribute(c_elem, _currentKey, c_object);
             }
-            else if ((c_arr = _currentElem as A) != null)
+            else if (_currentValue is A c_arr)
             {
                 AddArrayElement(c_arr, c_object);
             }
             else
             {
-                throw new System.NotSupportedException();
-            }
+                if (_currentValue == null)
+                {
+                    _currentValue = c_object;
+                }
+                else
+                {
+                    throw new System.NotSupportedException();
+                }
 
+            }
         }
+
         protected override void NotifyError()
         {
             base.NotifyError();
         }
-        protected override void OnError(ref int currentIndex)
-        {
-            base.OnError(ref currentIndex);
-        }
-        public object CurrentElement => _currentElem;
+
+        public object CurrentValue => _currentValue;
     }
 }

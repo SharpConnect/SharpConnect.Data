@@ -10,7 +10,7 @@ namespace SharpConnect.Data
         string Name { get; set; }
         IEnumerable<EsAttr> GetAttributeIterForward();
         void RemoveAttribute(string key);
-        void AppendChild(EsElem element);
+        void AppendChild(object element);
         void AppendAttribute(string key, object value);
         object GetAttributeValue(string key);
         EsAttr GetAttribute(string key);
@@ -19,7 +19,7 @@ namespace SharpConnect.Data
         int ChildCount { get; }
         int AttributeCount { get; }
         object GetChild(int index);
-        object UserData { get; set; }
+        object UserData { get; set; } //TODO review this again
     }
     /// <summary>
     /// ease attribute
