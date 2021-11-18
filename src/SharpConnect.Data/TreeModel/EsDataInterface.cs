@@ -19,8 +19,10 @@ namespace SharpConnect.Data
         int ChildCount { get; }
         int AttributeCount { get; }
         object GetChild(int index);
-        object UserData { get; set; } //TODO review this again
+        object UserData { get; set; } //TODO review this again       
     }
+
+
     /// <summary>
     /// ease attribute
     /// </summary>
@@ -50,5 +52,20 @@ namespace SharpConnect.Data
         EsElem CreateElement(string name);
         EsArr CreateArray();
         EsElem DocumentElement { get; set; }
+    }
+
+    public static class EsElemExtensions
+    {
+        public static IEnumerable<EsElem> GetChildNodeIter(this EsElem elem)
+        {
+            int n = elem.ChildCount;
+            for (int i = 0; i < n; ++i)
+            {
+                if (elem.GetChild(i) is EsElem childElem)
+                {
+                    yield return childElem;
+                }
+            }
+        }
     }
 }

@@ -22,6 +22,7 @@ namespace SharpConnect.Data
         public EsArr CreateArray() => new EaseArray();
         public EsElem DocumentElement { get; set; }
         public EsAttr CreateAttribute(string key, object value) => new EaseAttribute(key, value);
+
     }
 
     public static class EaseDocumentExtensions
@@ -76,9 +77,19 @@ namespace SharpConnect.Data
         Dictionary<string, int> _attrs = new Dictionary<string, int>();
         List<EaseAttribute> _attrsValues = new List<EaseAttribute>();
 
+#if DEBUG
+        static int s_dbugTotal;
+        public readonly int dbugId = s_dbugTotal++;
+#endif
         public EaseElement()
         {
             Name = "";
+#if DEBUG
+            if (dbugId == 409)
+            {
+
+            }
+#endif
         }
         public string Name { get; set; }
         public int AttributeCount => _attrs.Count;
