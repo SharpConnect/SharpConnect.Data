@@ -26,7 +26,20 @@ namespace SharpConnect.Data
                 }
                 else if (key == "!c")
                 {
-                    targetElem.AppendChild(value);
+                    if (value is EsArr arr)
+                    {
+                        //extract arr
+                        int j = arr.Count;
+                        for (int i = 0; i < j; ++i)
+                        {
+                            targetElem.AppendChild(arr[i]);
+                        }
+                    }
+                    else
+                    {
+                        throw new System.NotSupportedException();
+                        //targetElem.AppendChild(value);
+                    }
                     return;
                 }
             }

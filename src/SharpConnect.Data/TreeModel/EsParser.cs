@@ -768,7 +768,7 @@ namespace SharpConnect.Data
                 }
             }
         }
- 
+
         static uint ParseHex(char c1)
         {
             switch (c1)
@@ -902,6 +902,28 @@ namespace SharpConnect.Data
         {
             _currentKey = new string(_sourceBuffer, start, len);
         }
+
+        string ParseStringWithSomeEscape(int start, int len)
+        {
+            //TODO: use pool
+            StringBuilder sb = new StringBuilder();
+            int end = start + len;
+#if DEBUG
+            string dbug_preview = new string(_sourceBuffer, start, len);
+#endif
+            for (int i = start; i < end; ++i)
+            {
+                char c = _sourceBuffer[i];
+                if (c == '\\')
+                {
+                    //escape 1
+                    i++;//consume
+                    c = _sourceBuffer[i];
+                }
+                sb.Append(c);
+            }
+            return sb.ToString();
+        }
         protected override void NewValue(int start, int len)
         {
             //current object
@@ -930,16 +952,40 @@ namespace SharpConnect.Data
                         }
                     }
                     break;
+                case EsValueHint.StringLiteralWithSomeEscape:
+                    c_object = ParseStringWithSomeEscape(start + 1, len - 2);
+                    break;
                 case EsValueHint.StringLiteral:
                     c_object = new string(_sourceBuffer, start + 1, len - 2);
                     break;
                 case EsValueHint.IntegerNumber:
+                    iden = new string(_sourceBuffer, start, len);
+                    if (len > 0)
                     {
-                        
-
-                        iden = new string(_sourceBuffer, start, len);
+                        if (len < 10)
+                        {
+                            c_object = int.Parse(iden);
+                        }
+                        else
+                        {
+                            //signed
+                            long number = long.Parse(iden);
+                            if (number >= int.MinValue && number <= int.MaxValue)
+                            {
+                                //int32 range
+                                c_object = (int)number;
+                            }
+                            else
+                            {
+                                c_object = number;
+                            }
+                        }
                     }
-                    c_object = int.Parse(iden);
+                    else
+                    {
+                        //number len=0
+                        throw new NotSupportedException();
+                    }
                     break;
                 case EsValueHint.NumberWithFractionPart:
                 case EsValueHint.NumberWithExponentialPart:
@@ -950,7 +996,6 @@ namespace SharpConnect.Data
 
             if (_currentValue is E c_elem)
             {
-
                 AddElementAttribute(c_elem, _currentKey, c_object);
             }
             else if (_currentValue is A c_arr)
