@@ -808,16 +808,14 @@ namespace SharpConnect.Data
         where E : class
         where A : class
     {
-        enum CurrentObject
-        {
-            Object,
-            Array
-        }
+       
 
         Stack<string> _keyStack = new Stack<string>();
         Stack<object> _elemStack = new Stack<object>();
-        object _currentValue = null;
+
         string _currentKey = null;
+        object _currentValue = null;
+
 
         public EsParserBase()
         {
