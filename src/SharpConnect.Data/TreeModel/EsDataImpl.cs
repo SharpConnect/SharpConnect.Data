@@ -11,17 +11,17 @@ namespace SharpConnect.Data
         {
 
         }
-        public EsElem CreateElement(string elementName)
+        public EaseElement CreateElement(string elementName)
         {
             var elem = new EaseElement();
             elem.Name = elementName;
             return elem;
         }
         public bool EnableExtension { get; set; }
-        public EsElem CreateElement() => new EaseElement();
-        public EsArr CreateArray() => new EaseArray();
+        public EaseElement CreateElement() => new EaseElement();
+        public EaseArray CreateArray() => new EaseArray();
         public EsElem DocumentElement { get; set; }
-        public EsAttr CreateAttribute(string key, object value) => new EaseAttribute(key, value);
+        public EaseAttribute CreateAttribute(string key, object value) => new EaseAttribute(key, value);
 
     }
 
@@ -40,10 +40,10 @@ namespace SharpConnect.Data
         }
     }
 
-    class EaseArray : EsArr
+    public sealed class EaseArray : EsArr
     {
         List<object> _member = new List<object>();
-
+        internal EaseArray() { }
         public object this[int index]
         {
             get => _member[index];
@@ -71,8 +71,9 @@ namespace SharpConnect.Data
         }
     }
 
-    class EaseElement : EsElem
+    public sealed class EaseElement : EsElem
     {
+
         List<object> _childNodes;
         Dictionary<string, int> _attrs = new Dictionary<string, int>();
         List<EaseAttribute> _attrsValues = new List<EaseAttribute>();
@@ -81,7 +82,7 @@ namespace SharpConnect.Data
         static int s_dbugTotal;
         public readonly int dbugId = s_dbugTotal++;
 #endif
-        public EaseElement()
+        internal EaseElement()
         {
             Name = "";
 #if DEBUG
@@ -166,9 +167,9 @@ namespace SharpConnect.Data
 #endif
     }
 
-    class EaseAttribute : EsAttr
+    public sealed class EaseAttribute : EsAttr
     {
-        public EaseAttribute(string name, object value)
+        internal EaseAttribute(string name, object value)
         {
             Name = name;
             Value = value;

@@ -2,16 +2,15 @@
 using System.Collections.Generic;
 namespace SharpConnect.Data
 {
+
+
     /// <summary>
     /// ease element
     /// </summary>
     public interface EsElem
     {
-        string Name { get; set; }
+        string Name { get; }
         IEnumerable<EsAttr> GetAttributeIterForward();
-        void RemoveAttribute(string key);
-        void AppendChild(object element);
-        void AppendAttribute(string key, object value);
         object GetAttributeValue(string key);
         EsAttr GetAttribute(string key);
         EsAttr GetAttribute(int index);
@@ -36,11 +35,11 @@ namespace SharpConnect.Data
     /// </summary>
     public interface EsArr
     {
-        void AddItem(object item);
+
         IEnumerable<object> GetIter();
         void Clear();
         int Count { get; }
-        object this[int index] { get; set; }
+        object this[int index] { get; }
     }
 
     /// <summary>
@@ -48,9 +47,9 @@ namespace SharpConnect.Data
     /// </summary>
     public interface EsDoc
     {
-        EsElem CreateElement();
-        EsElem CreateElement(string name);
-        EsArr CreateArray();
+        //EsElem CreateElement();
+        //EsElem CreateElement(string name);
+        //EsArr CreateArray();
         EsElem DocumentElement { get; set; }
     }
 
