@@ -734,7 +734,7 @@ namespace SharpConnect.Data
                                     p._collectingState = CollectingState.None;//resetp._collectingState 
                                     if (c == '\n')
                                     {
-                                        
+
                                     }
                                     else
                                     {
@@ -2090,8 +2090,6 @@ namespace SharpConnect.Data
             _concat_value_len += len;
             _local_value_len = len;
             //-------
-
-
 #if DEBUG
             //test
             string cmt = GetCommentAsString();
@@ -2318,11 +2316,10 @@ namespace SharpConnect.Data
                 AddArrayElement(_currValue.arr, CollectedValueHint);
             }
 
+            //clear
             _concat_value_len = 0;//reset
+
         }
-
-
-
         protected override void NotifyError()
         {
             base.NotifyError();

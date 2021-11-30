@@ -19,7 +19,7 @@ namespace SharpConnect.Data
 
         protected override EaseArray CreateArray() => _easeDoc.CreateArray();
 
-      
+
         protected override void AddElementAttribute(EaseElement targetElem, int key, EaseArray value)
         {
             if (EnableExtension)
@@ -50,7 +50,7 @@ namespace SharpConnect.Data
                 if (key == _ext_n_keyIndex && valueHint == EsValueHint.StringLiteral)
                 {
                     //name
-                    ((EaseElement)targetElem).Name = GetValueAsString();
+                    targetElem.Name = GetValueAsString();
                     return;
                 }
             }
