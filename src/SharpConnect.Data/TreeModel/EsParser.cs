@@ -143,6 +143,12 @@ namespace SharpConnect.Data
         protected virtual void NewConcatValue(int len)
         {
         }
+        protected virtual void NewComment(int start, int len)
+        {
+        }
+        protected virtual void NewConcatComment(int len)
+        {
+        }
         protected virtual void Comma() { }
         protected virtual void OnParseEnd()
         {
@@ -663,76 +669,165 @@ namespace SharpConnect.Data
             }
             p.CollectedNumberParts = numParts;
             p._collectingState = collectingState;
-
-
             return finish;
         }
-        static void ReadSingleLineComment(EsParserBase p, int startAt, out int latestIndex)
-        {
-            char[] sourceBuffer = p._sourceBuffer;
-            latestIndex = startAt;
-            for (; latestIndex < sourceBuffer.Length; ++latestIndex)
-            {
-                char c = sourceBuffer[latestIndex];
-                if (c == '\r')
-                {
-                    if (latestIndex < sourceBuffer.Length - 1)
-                    {
-                        if (sourceBuffer[latestIndex + 1] == '\n')
-                        {
-                            //r,n
-                            latestIndex++;
-                            return;
-                        }
-                        else
-                        {
-                            //???
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        //end
-                        return;
-                    }
-                }
-                else if (c == '\n')
-                {
-                    return;
-                }
-            }
-        }
-        static void ReadBlockComment(EsParserBase p, int startAt, out int latestIndex)
-        {
-            char[] sourceBuffer = p._sourceBuffer;
-            latestIndex = startAt;
-            for (; latestIndex < sourceBuffer.Length; ++latestIndex)
-            {
-                char c = sourceBuffer[latestIndex];
-                if (c == '*')
-                {
-                    if (latestIndex < sourceBuffer.Length - 1)
-                    {
-                        if (sourceBuffer[latestIndex + 1] == '/')
-                        {
-                            //r,n
-                            latestIndex++;
-                            return;
-                        }
-                        else
-                        {
-                            //read next
-                        }
-                    }
-                    else
-                    {
-                        //end
-                        return;
-                    }
-                }
-            }
-        }
 
+        static bool ReadComment(EsParserBase p, int startAt, out int collected_len)
+        {
+            char[] sourceBuffer = p._sourceBuffer;
+            collected_len = 0;
+            int pos = startAt;
+            if (pos >= sourceBuffer.Length)
+            {
+                return false;
+            }
+
+            int lim = sourceBuffer.Length;
+            bool complete = false;
+            char c = sourceBuffer[pos];
+
+            //state from previous state
+            CollectingState collecting_state = p._collectingState;
+
+            switch (collecting_state)
+            {
+                default:
+                    throw new NotSupportedException();
+                case CollectingState.Comment_Maybe:
+                    {
+                        if (c == '/')
+                        {
+                            collecting_state = p._collectingState = CollectingState.Comment_Line;
+                            collected_len++; //consume /
+                            pos++;
+                            if (pos < lim)
+                            {
+                                goto case CollectingState.Comment_Line;
+                            }
+                        }
+                        else if (c == '*')
+                        {
+                            //block comment
+                            collecting_state = p._collectingState = CollectingState.Comment_Block;
+                            collected_len++; //consume /
+                            pos++;
+                            if (pos < lim)
+                            {
+                                goto case CollectingState.Comment_Block;
+                            }
+                        }
+                    }
+                    break;
+                case CollectingState.Comment_Line:
+                    {
+                        //read until end of this line comment
+                        //single line comment
+                        do
+                        {
+                            c = sourceBuffer[pos];
+                            if (c == '\r')
+                            {
+                                if (pos + 1 < lim)
+                                {
+                                    pos++;
+                                    c = sourceBuffer[pos];
+                                    p._collectingState = CollectingState.None;//resetp._collectingState 
+                                    if (c == '\n')
+                                    {
+                                        
+                                    }
+                                    else
+                                    {
+
+                                    }
+
+                                    return true;
+                                }
+                                else
+                                {
+                                    p._collectingState = CollectingState.Comment_Line_Ending_R;
+                                    return false;
+                                }
+                            }
+                            else if (c == '\n')
+                            {
+                                //just \n
+                                pos++;
+                                p._collectingState = CollectingState.None;//resetp._collectingState
+                                return true;
+                            }
+                            else
+                            {
+                                collected_len++; //consume any c
+                                pos++;
+                            }
+                        } while (pos < lim);
+                    }
+                    break;
+                case CollectingState.Comment_Line_Ending_R:
+                    {
+                        //
+                        if (c == '\n')
+                        {
+                            p._collectingState = CollectingState.None;
+                        }
+                        return true;
+                    }
+                case CollectingState.Comment_Block_Ending:
+                    {
+                        //collecting content inside the block
+                        if (c == '/')
+                        {
+                            //block comment 
+                            collected_len++; //consume /
+                            return true;
+                        }
+                        else
+                        {
+                            collected_len++; //consume 
+                            p._collectingState = CollectingState.Comment_Block;
+                            pos++;
+                            if (pos < lim)
+                            {
+                                goto case CollectingState.Comment_Block;//turn to block cmment state
+                            }
+                        }
+                    }
+                    break;
+                case CollectingState.Comment_Block:
+                    {
+                        do
+                        {
+                            c = sourceBuffer[pos];
+                            collected_len++; //consume any c
+                            if (c == '*')
+                            {
+                                p._collectingState = CollectingState.Comment_Block_Ending;
+                                if (pos + 1 < lim)
+                                {
+                                    collected_len++;//consume any c
+                                    pos++;
+                                    c = sourceBuffer[pos];
+                                    if (c == '/')
+                                    {
+                                        //stop the block
+                                        p._collectingState = CollectingState.None;//resetp._collectingState
+                                        return true;
+                                    }
+                                    else
+                                    {
+                                        p._collectingState = CollectingState.Comment_Block;//turn back
+                                    }
+                                }
+                            }
+                            pos++;
+
+                        } while (pos < lim);
+                    }
+                    break;
+            }
+            return complete;
+        }
 
         bool _isSuccess;
         bool IsSuccess
@@ -807,6 +902,13 @@ namespace SharpConnect.Data
             Num_Fraction,
             Num_Exponent_E,
             Num_Exponent_NumPart,
+
+            //extension
+            Comment_Maybe,
+            Comment_Line,//line comment
+            Comment_Line_Ending_R, //r
+            Comment_Block,//multiline block comment /*
+            Comment_Block_Ending,//  */
 
         }
 #if DEBUG
@@ -954,7 +1056,27 @@ namespace SharpConnect.Data
                                 }
                                 break;
                         }
-
+                    }
+                    break;
+                case CollectingState.Comment_Maybe:
+                case CollectingState.Comment_Block:
+                case CollectingState.Comment_Block_Ending:
+                case CollectingState.Comment_Line:
+                case CollectingState.Comment_Line_Ending_R:
+                    {
+                        //found * after /*
+                        if (!ReadComment(this, i, out int collected_len))
+                        {
+                            //not complete
+                            //not acccept latest index
+                            i = stopBefore + 1;//force stop                             
+                            return;//long string 
+                        }
+                        else
+                        {
+                            CollectedValueHint = EsValueHint.Comment;
+                            NewConcatComment(collected_len);
+                        }
                     }
                     break;
             }
@@ -981,36 +1103,20 @@ namespace SharpConnect.Data
                 }
                 else if (c == '/')
                 {
-                    throw new NotSupportedException();
+                    //line comment or 
+                    _collectingState = CollectingState.Comment_Maybe;
+                    if (!ReadComment(this, i + 1, out int collected_len))
+                    {
+                        SaveLatestReadPos(i);
+                        return;
+                    }
+                    else
+                    {
+                        NewComment(i, collected_len + 1);
+                        i += 1 + collected_len;
+                        continue;
+                    }
 
-                    ////extension: comment syntax                  
-                    //if (i < stopBefore - 1) //has next
-                    //{
-                    //    char next_c = buff[i + 1];
-                    //    if (next_c == '/')
-                    //    {
-                    //        ReadSingleLineComment(this, i, out latestIndex);
-                    //        i = latestIndex;
-                    //        continue;
-                    //    }
-                    //    else if (next_c == '*')
-                    //    {
-                    //        //inline comment 
-                    //        ReadBlockComment(this, i, out latestIndex);
-                    //        i = latestIndex;
-                    //        continue;
-                    //    }
-                    //    else
-                    //    {
-                    //        NotifyErrorAndBreak(ref i);//***                             
-                    //        continue;
-                    //    }
-                    //}
-                    //else
-                    //{
-                    //    NotifyErrorAndBreak(ref i);//***
-                    //    continue;
-                    //}
                 }
                 //-----------------------
 #if DEBUG
@@ -1368,7 +1474,7 @@ namespace SharpConnect.Data
 
         StringDic _keyDic = new StringDic();
         bool _emptyKey = true;
- 
+
         int _currentKey;
         //---
 
@@ -1520,14 +1626,7 @@ namespace SharpConnect.Data
             //implement key
             //key trend
             _emptyKey = false;
-
             _currentKey = _keyDic.Register(_sourceBuffer, start + 1, len - 2);
-
-            if (GetKeyAsStringByIndex(_currentKey) == "results")
-            {
-
-            }
-
         }
         protected override void NewConcatKey(int len)
         {
@@ -1909,6 +2008,31 @@ namespace SharpConnect.Data
                 return new string(_sourceBuffer, _value_start + 1, _local_value_len - 2);
             }
         }
+        protected string GetCommentAsString()
+        {
+            if (_isConcatValue)
+            {
+                //need to merge
+                _sb.Length = 0;//clear
+                for (int i = 0; i < _tmpSavedBufferList.Count; ++i)
+                {
+                    TempSavedBuffer bb = _tmpSavedBufferList[i];
+                    AppendStringWithSomeEscape(_sb, bb.buffer, 0, bb.len);
+                }
+                if (_local_value_len > 1)
+                {
+                    _sb.Append(_sourceBuffer, 0, _local_value_len);
+                }
+                return _sb.ToString();
+            }
+            else
+            {
+                //not a concat value
+                _sb.Length = 0;//clear
+                AppendStringWithSomeEscape(_sb, _sourceBuffer, _value_start, _local_value_len);
+                return _sb.ToString();
+            }
+        }
         protected double GetValueAsDouble()
         {
 
@@ -1957,6 +2081,46 @@ namespace SharpConnect.Data
             }
             return dstPos;
         }
+
+
+        protected override void NewConcatComment(int len)
+        {
+            _isConcatValue = true;
+            _value_start = 0;
+            _concat_value_len += len;
+            _local_value_len = len;
+            //-------
+
+
+#if DEBUG
+            //test
+            string cmt = GetCommentAsString();
+#endif
+            //-------
+            //clear buffer
+            for (int i = 0; i < _tmpSavedBufferList.Count; ++i)
+            {
+                ReleaseFreeTempBuffer(_tmpSavedBufferList[i]);
+            }
+
+            _concat_value_len = 0;
+            _tmpSavedBufferList.Clear();
+        }
+        protected override void NewComment(int start, int len)
+        {
+            _isConcatValue = false;
+            _value_start = start;
+            _local_value_len = _concat_value_len = len;
+            //-------
+#if DEBUG
+            //test
+            string cmt = GetCommentAsString();
+#endif
+
+
+            //-------
+            _concat_value_len = 0;//reset
+        }
         protected override void NewConcatValue(int len)
         {
             _isConcatValue = true;
@@ -1966,6 +2130,9 @@ namespace SharpConnect.Data
 
             switch (CollectedValueHint)
             {
+                case EsValueHint.Comment:
+                    throw new NotSupportedException();
+
                 case EsValueHint.IntegerNumber:
                     {
 #if DEBUG
@@ -2071,17 +2238,19 @@ namespace SharpConnect.Data
             _concat_value_len = 0;
             _tmpSavedBufferList.Clear();
         }
+
         protected override void NewValue(int start, int len)
         {
             _isConcatValue = false;
             _value_start = start;
             _local_value_len = _concat_value_len = len;
 #if DEBUG
-            if (CollectedValueHint == EsValueHint.StringLiteral && _local_value_len < 2)
-            {
+            //if (CollectedValueHint == EsValueHint.StringLiteral && _local_value_len < 2)
+            //{
 
-            }
+            //}
 #endif
+
             if (CollectedValueHint == EsValueHint.Identifier)
             {
                 //special
@@ -2151,6 +2320,8 @@ namespace SharpConnect.Data
 
             _concat_value_len = 0;//reset
         }
+
+
 
         protected override void NotifyError()
         {
