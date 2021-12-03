@@ -12,7 +12,6 @@ namespace SharpConnect.Data
 
         True, False, Null,
 
-
         StringLiteral,
         StringLiteralWithSomeEscape,
         IntegerNumber,
@@ -25,6 +24,9 @@ namespace SharpConnect.Data
         Comment,//extension
         Object,
         Array,
+
+        //---------------
+
     }
 
 
@@ -150,14 +152,7 @@ namespace SharpConnect.Data
         {
         }
         protected virtual void Comma() { }
-        protected virtual void OnParseEnd()
-        {
 
-        }
-        protected virtual void OnParseStart()
-        {
-
-        }
         protected virtual void NotifyError()
         {
         }
@@ -829,6 +824,7 @@ namespace SharpConnect.Data
             return complete;
         }
 
+
         bool _isSuccess;
         bool IsSuccess
         {
@@ -848,6 +844,7 @@ namespace SharpConnect.Data
         protected char[] _sourceBuffer;
         protected EsValueHint CollectedValueHint { get; set; }
         protected NumberParts CollectedNumberParts { get; private set; }
+
 
         readonly Stack<EsElementKind> _elemKindStack = new Stack<EsElementKind>();
         ParsingState _curr_state = ParsingState._1_ExpectObjectValueOrArrayElement;
@@ -1425,7 +1422,7 @@ namespace SharpConnect.Data
     {
         Dictionary<ulong, int> _keyDic = new Dictionary<ulong, int>();
         List<string> _keyList = new List<string>();
-
+        List<ulong> _orgHashList = new List<ulong>();
         public StringDic()
         {
             Register(new char[0], 0, 0);//empty string
@@ -1433,18 +1430,24 @@ namespace SharpConnect.Data
         public int Register(char[] buffer, int start, int len)
         {
             //calculate has for specific region
-            ulong hash_value = CalculateHash(buffer, start, len);
+            ulong hash_value = EsStringHash.CalculateHash(buffer, start, len);
             if (!_keyDic.TryGetValue(hash_value, out int index))
             {
                 index = _keyList.Count;//**
                 _keyDic.Add(hash_value, _keyDic.Count);
                 _keyList.Add(new string(buffer, start, len));
+                _orgHashList.Add(hash_value);//***
             }
             return index;
         }
         public int Count => _keyList.Count;
         public string GetKey(int index) => _keyList[index];
-        static ulong CalculateHash(char[] buffer, int start, int len)
+        public ulong GetOriginalHashValue(int index) => _orgHashList[index];
+
+    }
+    public static class EsStringHash
+    {
+        public static ulong CalculateHash(char[] buffer, int start, int len)
         {
             //https://stackoverflow.com/questions/9545619/a-fast-hash-function-for-string-in-c-sharp
             ulong hashedValue = 3074457345618258791ul;
@@ -1456,7 +1459,13 @@ namespace SharpConnect.Data
             }
             return hashedValue;
         }
+        public static ulong CalculateHash(string s)
+        {
+            char[] buff = s.ToCharArray();
+            return CalculateHash(buff, 0, buff.Length);
+        }
     }
+
 
     public abstract class EsParserBase<E, A> : EsParserBase
         where E : class
@@ -1482,8 +1491,6 @@ namespace SharpConnect.Data
         bool _emptyCurrentValue = true;
         CurrentObject _currValue;
 
-
-
         public EsParserBase()
         {
 
@@ -1498,11 +1505,8 @@ namespace SharpConnect.Data
         protected abstract void AddArrayElement(A targetArray, A value);
         protected abstract void AddArrayElement(A targetArray, E value);
         protected abstract void AddArrayElement(A targetArray, EsValueHint valueHint);
-
-        protected override void OnParseStart()
-        {
-
-        }
+        protected virtual void OnFinishArr(A targetArray) { }
+        protected virtual void OnFinishElem(E targetElem) { }
 
         protected int GetPrevKeyIndex()
         {
@@ -1522,7 +1526,6 @@ namespace SharpConnect.Data
             if (!_emptyKey)
             {
                 //copy old key
-
                 _keyStack.Push(_currentKey);
             }
             _emptyKey = true;
@@ -1535,10 +1538,14 @@ namespace SharpConnect.Data
             _currValue.elem = CreateElement();
             _emptyCurrentValue = false;
         }
+
+
         void InternalPopCurrentObjectAndPushToPrevContext()
         {
             //current element should be object
             CurrentObject c_object = _currValue;
+
+
             if (_elemStack.Count > 0)
             {
                 //pop from stack
@@ -1547,6 +1554,7 @@ namespace SharpConnect.Data
 
                 if (!_currValue.isArr)
                 {
+
                     if (_keyStack.Count > 0)
                     {
                         _currentKey = _keyStack.Pop();
@@ -1566,6 +1574,8 @@ namespace SharpConnect.Data
                 }
                 else
                 {
+
+
                     if (c_object.isArr)
                     {
                         AddArrayElement(_currValue.arr, c_object.arr);
@@ -1574,7 +1584,18 @@ namespace SharpConnect.Data
                     {
                         AddArrayElement(_currValue.arr, c_object.elem);
                     }
-
+                }
+            }
+            else
+            {
+                //the last one
+                if (!_currValue.isArr)
+                {
+                    OnFinishElem(_currValue.elem);
+                }
+                else
+                {
+                    OnFinishArr(_currValue.arr);
                 }
             }
         }
@@ -1589,8 +1610,6 @@ namespace SharpConnect.Data
                 _keyStack.Push(_currentKey);
             }
             _emptyKey = true;
-
-
             if (!_emptyCurrentValue)
             {
                 _elemStack.Push(_currValue);
@@ -1605,13 +1624,10 @@ namespace SharpConnect.Data
         {
             InternalPopCurrentObjectAndPushToPrevContext();
         }
-        protected override void OnParseEnd()
-        {
 
-        }
 
         public string GetKeyAsStringByIndex(int index) => _keyDic.GetKey(index);
-
+        public ulong GetKeyAsOriginalHashValue(int index) => _keyDic.GetOriginalHashValue(index);
 
         const int KEY_BUFFER_SIZE = 1024;
         TempSavedBuffer _keyBuffer = new TempSavedBuffer(new char[KEY_BUFFER_SIZE], 0);
@@ -1856,15 +1872,22 @@ namespace SharpConnect.Data
                 if (_local_value_len > 10)
                 {
                     //may be long/ulong
-                    throw new NotSupportedException();
+                    long p = ParseInt64(_sourceBuffer, _value_start, _local_value_len);
+                    if (p > int.MinValue && p < int.MaxValue)
+                    {
+                        return (int)p;
+                    }
+                    else
+                    {
+                        throw new NotSupportedException();
+                    }
+
                 }
                 else
                 {
                     return ParseInt32(_sourceBuffer, _value_start, _local_value_len);
                 }
-
             }
-            return 0;
         }
         protected long GetValueAsInt64()
         {
@@ -1885,7 +1908,6 @@ namespace SharpConnect.Data
         }
 
         StringBuilder _sb = new StringBuilder();
-
         static void AppendStringWithSomeEscape(StringBuilder sb, char[] source, int start, int len)
         {
             int i = start;
@@ -1942,6 +1964,8 @@ namespace SharpConnect.Data
                 }
             }
         }
+
+
         protected string GetValueAsStringWithEscape()
         {
             if (_isConcatValue)
@@ -1972,6 +1996,20 @@ namespace SharpConnect.Data
                 _sb.Length = 0;//clear
                 AppendStringWithSomeEscape(_sb, _sourceBuffer, _value_start + 1, _local_value_len - 2);
                 return _sb.ToString();
+            }
+        }
+
+        protected void GetValueRange(out int offset, out int local_val_len)
+        {
+            if (_isConcatValue)
+            {
+                local_val_len = _local_value_len;
+                offset = -1;
+            }
+            else
+            {
+                local_val_len = _local_value_len;
+                offset = _value_start;
             }
         }
         protected string GetValueAsString()
