@@ -35,6 +35,25 @@ namespace SharpConnect.Data
     /// </summary>
     public abstract class EsParserBase
     {
+        public struct StreamSourceProvider
+        {
+            internal readonly System.IO.StreamReader s;
+            internal readonly int blockSize;
+            internal readonly char[] buffer;
+            public StreamSourceProvider(System.IO.StreamReader s, char[] buffer)
+            {
+                this.s = s;
+                this.blockSize = 0;
+                this.buffer = buffer;
+            }
+            public StreamSourceProvider(System.IO.StreamReader s, int blockSize)
+            {
+                this.s = s;
+                this.blockSize = blockSize;
+                this.buffer = null;
+            }
+        }
+
         public class TextSourceProvider
         {
             public char[] Buffer { get; set; }
@@ -43,6 +62,8 @@ namespace SharpConnect.Data
 
             public int TotalOffset { get; set; }
         }
+
+
         public struct BuffRange
         {
             public readonly EsValueHint hint;
@@ -858,6 +879,7 @@ namespace SharpConnect.Data
             p.Len = buff.Length;
             Parse(p);
         }
+
         public void Reset()
         {
             _sourceBuffer = null;
@@ -1382,7 +1404,6 @@ namespace SharpConnect.Data
 
             //}
         }
-        //public int LatestIndex => _latestIndex;
 
 
         static uint ParseHex(char c1)
@@ -1417,6 +1438,60 @@ namespace SharpConnect.Data
         }
     }
 
+    public static class EaseParseExtensions
+    {
+        public static void Parse(this EsParserBase p, EsParserBase.StreamSourceProvider streamSrcProvider)
+        {
+            char[] buffer = streamSrcProvider.buffer;
+            if (buffer == null)
+            {
+                buffer = new char[streamSrcProvider.blockSize];//16*2KB
+
+                if (buffer.Length == 0)
+                {
+                    throw new NotSupportedException();
+                }
+            }
+            //
+            int read_byte;
+            int startAt = 0;
+
+            bool readMore = true;
+            int round_count = 0;
+
+            EsParserBase.TextSourceProvider provider = new EsParserBase.TextSourceProvider();
+            System.IO.StreamReader s = streamSrcProvider.s;
+
+            while (readMore)
+            {
+                read_byte = s.Read(buffer, startAt, buffer.Length);
+
+                //if (round_count >= 0 && round_count < 20)
+                //{
+                //    //see some part of file
+                //    File.WriteAllText("log1." + round_count + ".txt", new string(buffer));
+                //}
+
+                provider.Buffer = buffer;
+                provider.StartAt = startAt;
+                provider.Len = read_byte;
+
+                p.Parse(provider);
+
+                provider.TotalOffset += read_byte;
+
+                if (!p.IsFinish())
+                {
+                    startAt = 0; //reset 
+                    round_count++;
+                }
+                else
+                {
+                    readMore = false;
+                }
+            }
+        }
+    }
 
     class StringDic
     {
