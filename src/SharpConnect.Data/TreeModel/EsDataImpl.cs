@@ -175,7 +175,7 @@ namespace SharpConnect.Data
             Value = value;
         }
         public string Name { get; }
-        public object Value { get; }
+        public object Value { get; set; }
         public override string ToString() => Name + ":" + Value;
     }
 
