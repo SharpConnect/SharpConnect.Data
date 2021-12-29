@@ -1090,7 +1090,7 @@ namespace SharpConnect.Data
             {
 #if DEBUG
                 dbug_charIndex++;
-                if (dbug_charIndex >= 44)
+                if (dbug_charIndex >= 64)
                 {
 
                 }

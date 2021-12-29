@@ -291,7 +291,12 @@ namespace SharpConnect.Data
             }
             sb.Append(']');
         }
-
+        public static void WriteJsonArr(this EsArr esArr, StringBuilder stbuilder)
+        {
+            EsElemJsonWriteParameters pars = new EsElemJsonWriteParameters();
+            pars.Output = stbuilder;
+            WriteJson(esArr, pars);
+        }
         public static void WriteJson(this EsElem esElem, StringBuilder sb)
         {
             WriteJson(esElem, new EsElemJsonWriteParameters { Output = sb });
@@ -385,20 +390,43 @@ namespace SharpConnect.Data
         public static void WriteJson(object elem, EsElemJsonWriteParameters pars)
         {
             //recursive
-#if DEBUG
-            Type t = elem.GetType();
-#endif
+
             StringBuilder sb = pars.Output;
             if (elem == null)
             {
                 sb.Append("null");
             }
-            else if (elem is string)
+            else if (elem is string stringValue)
             {
                 sb.Append('"');
                 //TODO: proper escape json string
                 //ensure we scape " inside this string
-                sb.Append((string)elem);
+
+                unsafe
+                {
+
+                    int j = stringValue.Length;
+                    fixed (char* cc = stringValue)
+                    {
+                        for (int i = 0; i < j; ++i)
+                        {
+                            char c = cc[i];//value
+                            if (c == '\"')
+                            {
+                                sb.Append("\\\"");
+                            }
+                            else if (c == '\\')
+                            {
+                                sb.Append("\\\\");
+                            }
+                            else
+                            {
+                                sb.Append(c);
+                            }
+                        }
+                    }
+                } 
+                
                 sb.Append('"');
             }
             else if (elem is double ||
